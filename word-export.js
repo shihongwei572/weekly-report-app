@@ -134,14 +134,157 @@ function buildContractWordTable(docx, detailData, totalSigned, factor) {
   });
 
   const totalCols = 1 + groups.length * 3 + 3;
-  const pageWidthDxa = 9360;
-  const colW = Math.floor(pageWidthDxa / totalCols);
-  const columnWidths = Array(totalCols).fill(colW);
+  const pageWidthDxa = 14400;
+  
+  const columnWidths = [1100];
+  for (let i = 0; i < groups.length; i++) {
+    columnWidths.push(750, 700, 750);
+  }
+  columnWidths.push(800, 750, 800);
 
   return new Table({
     rows: [headerRow1, headerRow2, ...dataRows],
     width: { size: 100, type: WidthType.PERCENTAGE },
     columnWidths,
+  });
+}
+
+function buildLastmileWordTable(docx, data) {
+  const { Table, TableRow, TableCell, TextRun, Paragraph, AlignmentType, BorderStyle, WidthType, VerticalAlign } = docx;
+  const DEPTS = ['珠三角', '粤西', '广西', '海南', '福建'];
+  
+  const C = {
+    H_BG: '1E40AF', H_FG: 'FFFFFF',
+    ODD: 'FFFFFF', EVEN: 'EFF6FF',
+    TOTAL_BG: 'BFDBFE', TOTAL_FG: '1E40AF',
+    RED: 'DC2626', ORANGE: 'D97706', GREEN: '059669',
+  };
+
+  const thin = (color = 'CBD5E1') => ({ style: BorderStyle.SINGLE, size: 4, color });
+  const b = (color = 'CBD5E1') => ({ top: thin(color), bottom: thin(color), left: thin(color), right: thin(color) });
+
+  function makeCell(text, opts = {}) {
+    const {
+      bold = false,
+      align = AlignmentType.CENTER,
+      bg = 'FFFFFF', fg = '1A1A1A',
+      size = 18, borders = b(),
+      vAlign,
+    } = opts;
+    const cellProps = { borders, shading: { fill: bg }, verticalAlign: vAlign || VerticalAlign.CENTER };
+    return new TableCell({
+      ...cellProps,
+      children: [new Paragraph({
+        children: [new TextRun({ text: String(text), bold, size, font: { name: '宋体' }, color: fg })],
+        alignment: align,
+        spacing: { before: 30, after: 30 },
+      })],
+    });
+  }
+
+  const headerCells = [
+    makeCell('经营部', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+    makeCell('预算指标', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+    makeCell('最后一公里签约(万吨)', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+    makeCell('占比', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+  ];
+  const headerRow = new TableRow({ children: headerCells, tableHeader: true });
+
+  const displayDepts = [...DEPTS, '沿海大区'];
+  const dataRows = displayDepts.map((dept, idx) => {
+    const isTotal = dept === '沿海大区';
+    const d = isTotal ? 
+      { total: round2(data.totalAll || 0), lastmile: round2(data.lastmileAll || 0) } :
+      (data.deptData[dept] || { total: 0, lastmile: 0 });
+    
+    const rowBg = isTotal ? C.TOTAL_BG : (idx % 2 === 0 ? C.ODD : C.EVEN);
+    const planRate = LASTMILE_DEPT_PLAN[dept] ?? (isTotal ? 28 : 30);
+    const rate = d.total > 0 ? round2(d.lastmile / d.total * 100) : 0;
+    const rateStr = d.total > 0 ? rate + '%' : '-';
+    const rateFg = rate >= planRate ? C.GREEN : rate >= planRate * 0.8 ? C.ORANGE : C.RED;
+
+    return new TableRow({ children: [
+      makeCell(dept, { bold: true, bg: isTotal ? C.TOTAL_BG : 'DBEAFE', fg: isTotal ? C.TOTAL_FG : '1E40AF' }),
+      makeCell(planRate + '%', { bg: rowBg, fg: '475569' }),
+      makeCell(d.lastmile > 0 ? d.lastmile : '-', { align: AlignmentType.RIGHT, bg: rowBg, fg: '1E40AF' }),
+      makeCell(rateStr, { bold: true, bg: rowBg, fg: isTotal ? '14532D' : rateFg }),
+    ]});
+  });
+
+  return new Table({
+    rows: [headerRow, ...dataRows],
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    columnWidths: [2500, 2000, 3000, 2000],
+  });
+}
+
+function buildContainerWordTable(docx, data) {
+  const { Table, TableRow, TableCell, TextRun, Paragraph, AlignmentType, BorderStyle, WidthType, VerticalAlign } = docx;
+  const DEPTS = ['珠三角', '粤西', '广西', '海南', '福建'];
+  
+  const C = {
+    H_BG: '1E40AF', H_FG: 'FFFFFF',
+    ODD: 'FFFFFF', EVEN: 'EFF6FF',
+    TOTAL_BG: 'BFDBFE', TOTAL_FG: '1E40AF',
+    RED: 'DC2626', ORANGE: 'D97706', GREEN: '059669',
+  };
+
+  const thin = (color = 'CBD5E1') => ({ style: BorderStyle.SINGLE, size: 4, color });
+  const b = (color = 'CBD5E1') => ({ top: thin(color), bottom: thin(color), left: thin(color), right: thin(color) });
+
+  function makeCell(text, opts = {}) {
+    const {
+      bold = false,
+      align = AlignmentType.CENTER,
+      bg = 'FFFFFF', fg = '1A1A1A',
+      size = 18, borders = b(),
+      vAlign,
+    } = opts;
+    const cellProps = { borders, shading: { fill: bg }, verticalAlign: vAlign || VerticalAlign.CENTER };
+    return new TableCell({
+      ...cellProps,
+      children: [new Paragraph({
+        children: [new TextRun({ text: String(text), bold, size, font: { name: '宋体' }, color: fg })],
+        alignment: align,
+        spacing: { before: 30, after: 30 },
+      })],
+    });
+  }
+
+  const headerCells = [
+    makeCell('经营部', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+    makeCell('预算指标', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+    makeCell('销售签约量(万吨)', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+    makeCell('完成率', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+  ];
+  const headerRow = new TableRow({ children: headerCells, tableHeader: true });
+
+  const displayDepts = [...DEPTS, '沿海大区'];
+  const dataRows = displayDepts.map((dept, idx) => {
+    const isTotal = dept === '沿海大区';
+    const d = isTotal ?
+      { total: round2(data.totalAll || 0), plan: DEPTS.reduce((s, d) => s + (CONTAINER_PLAN[d] || 0), 0) } :
+      (data.deptData[dept] || { total: 0, container: 0, railway: 0 });
+    
+    const rowBg = isTotal ? C.TOTAL_BG : (idx % 2 === 0 ? C.ODD : C.EVEN);
+    const plan = isTotal ? d.plan : (CONTAINER_PLAN[dept] || 0);
+    const total = d.total;
+    const rate = plan > 0 ? round2(total / plan * 100) : 0;
+    const rateStr = plan > 0 ? rate + '%' : '-';
+    const rateFg = rate >= 80 ? C.GREEN : rate >= 60 ? C.ORANGE : C.RED;
+
+    return new TableRow({ children: [
+      makeCell(dept, { bold: true, bg: isTotal ? C.TOTAL_BG : 'DBEAFE', fg: isTotal ? C.TOTAL_FG : '1E40AF' }),
+      makeCell(plan > 0 ? plan : '-', { bg: rowBg, fg: '475569' }),
+      makeCell(total > 0 ? total : '-', { align: AlignmentType.RIGHT, bg: rowBg, fg: '1E40AF' }),
+      makeCell(rateStr, { bold: true, bg: rowBg, fg: isTotal ? '14532D' : rateFg }),
+    ]});
+  });
+
+  return new Table({
+    rows: [headerRow, ...dataRows],
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    columnWidths: [2500, 2200, 2800, 2200],
   });
 }
 
@@ -345,6 +488,21 @@ async function exportWord() {
       indent: { firstLine: 480 },
       spacing: { line: 360, lineRule: 'auto', after: 80 },
     })));
+
+    try {
+      const lastmileData = calcLastmileData();
+      if (lastmileData) {
+        docChildren.push(new Paragraph({ children: [], spacing: { before: 240 } }));
+        docChildren.push(new Paragraph({
+          children: [new TextRun({ text: '表：各经营部最后一公里签约情况（万吨）', size: SIZE_CAPTION, font: { name: FONT_MAIN }, color: COLOR_CAPTION, italics: true })],
+          alignment: AlignmentType.LEFT,
+          spacing: { after: 100 },
+        }));
+        docChildren.push(buildLastmileWordTable(window.docx, lastmileData));
+      }
+    } catch (e) {
+      console.warn('最后一公里表格生成失败:', e);
+    }
   }
 
   const containerEl = document.getElementById('containerTextOutput');
@@ -369,6 +527,21 @@ async function exportWord() {
       indent: { firstLine: 480 },
       spacing: { line: 360, lineRule: 'auto', after: 80 },
     })));
+
+    try {
+      const containerData = calcContainerData();
+      if (containerData) {
+        docChildren.push(new Paragraph({ children: [], spacing: { before: 240 } }));
+        docChildren.push(new Paragraph({
+          children: [new TextRun({ text: '表：各经营部集装箱玉米签约情况（万吨）', size: SIZE_CAPTION, font: { name: FONT_MAIN }, color: COLOR_CAPTION, italics: true })],
+          alignment: AlignmentType.LEFT,
+          spacing: { after: 100 },
+        }));
+        docChildren.push(buildContainerWordTable(window.docx, containerData));
+      }
+    } catch (e) {
+      console.warn('集装箱表格生成失败:', e);
+    }
 
     if (containerChartInstance) {
       try {
