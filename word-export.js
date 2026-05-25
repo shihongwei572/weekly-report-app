@@ -33,15 +33,15 @@ function buildContractWordTable(docx, detailData, totalSigned, factor) {
   const groups       = CONTRACT_TABLE_GROUPS;
 
   const C = {
-    H_BG: '1E293B', H_FG: 'FFFFFF',
-    SUB_SIGN: '334155', SUB_PLAN: '475569', SUB_RATE: '475569',
-    DEPT_BG: 'F1F5F9', DEPT_FG: '1E293B',
-    ODD: 'FFFFFF', EVEN: 'F8FAFC',
-    PLAN_CELL: 'FFFFFF', PLAN_FG: '475569',
-    RATE_CELL: 'FFFFFF',
-    TOTAL_BG: 'E2E8F0', TOTAL_FG: '1E293B',
-    TOTAL_PLAN: 'E2E8F0', TOTAL_RATE: 'E2E8F0',
-    RED: 'DC2626', ORANGE: 'D97706', GREEN: '16A34A',
+    H_BG: '1E40AF', H_FG: 'FFFFFF',
+    SUB_SIGN: '1E3A8A', SUB_PLAN: '2563EB', SUB_RATE: '3B82F6',
+    DEPT_BG: 'DBEAFE', DEPT_FG: '1E40AF',
+    ODD: 'FFFFFF', EVEN: 'EFF6FF',
+    PLAN_CELL: 'F0F9FF', PLAN_FG: '1E40AF',
+    RATE_CELL: 'F0F9FF',
+    TOTAL_BG: 'BFDBFE', TOTAL_FG: '1E40AF',
+    TOTAL_PLAN: 'BFDBFE', TOTAL_RATE: 'BFDBFE',
+    RED: 'DC2626', ORANGE: 'D97706', GREEN: '059669',
   };
 
   const thin = (color = 'CBD5E1') => ({ style: BorderStyle.SINGLE, size: 4, color });
@@ -296,6 +296,110 @@ async function exportWord() {
         spacing: { after: 100 },
       }));
       docChildren.push(buildContractWordTable(window.docx, detailData, totalSigned, contractUnitFactor));
+    }
+  }
+
+  const settleEl = document.getElementById('settleTextOutput');
+  if (settleWorkbook && settleEl && settleEl.textContent.trim()) {
+    if (!filename) filename = `${region}运营周报-销售结算`;
+
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '', size: 8 })],
+      border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: 'BDC3C7', space: 4 } },
+      spacing: { before: 320, after: 320 },
+    }));
+
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '三、销售结算情况', size: SIZE_HEADING, font: { name: FONT_HEADING }, color: COLOR_HEAD, bold: true })],
+      spacing: { line: 360, lineRule: 'auto', before: 0, after: 160 },
+    }));
+
+    const settleParas = Array.from(settleEl.querySelectorAll('.text-para')).map(p => p.innerHTML);
+    docChildren.push(...settleParas.map(html => new Paragraph({
+      children: buildParagraphRuns(html, window.docx),
+      alignment: AlignmentType.BOTH,
+      indent: { firstLine: 480 },
+      spacing: { line: 360, lineRule: 'auto', after: 80 },
+    })));
+  }
+
+  const lastmileEl = document.getElementById('lastmileTextOutput');
+  if (lastmileWorkbook && lastmileEl && lastmileEl.textContent.trim()) {
+    if (!filename) filename = `${region}运营周报-最后一公里`;
+
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '', size: 8 })],
+      border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: 'BDC3C7', space: 4 } },
+      spacing: { before: 320, after: 320 },
+    }));
+
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '四、最后一公里销售情况', size: SIZE_HEADING, font: { name: FONT_HEADING }, color: COLOR_HEAD, bold: true })],
+      spacing: { line: 360, lineRule: 'auto', before: 0, after: 160 },
+    }));
+
+    const lastmileParas = Array.from(lastmileEl.querySelectorAll('.text-para')).map(p => p.innerHTML);
+    docChildren.push(...lastmileParas.map(html => new Paragraph({
+      children: buildParagraphRuns(html, window.docx),
+      alignment: AlignmentType.BOTH,
+      indent: { firstLine: 480 },
+      spacing: { line: 360, lineRule: 'auto', after: 80 },
+    })));
+  }
+
+  const containerEl = document.getElementById('containerTextOutput');
+  if (containerWorkbook && containerEl && containerEl.textContent.trim()) {
+    if (!filename) filename = `${region}运营周报-集装箱玉米`;
+
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '', size: 8 })],
+      border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: 'BDC3C7', space: 4 } },
+      spacing: { before: 320, after: 320 },
+    }));
+
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '五、集装箱玉米销售情况', size: SIZE_HEADING, font: { name: FONT_HEADING }, color: COLOR_HEAD, bold: true })],
+      spacing: { line: 360, lineRule: 'auto', before: 0, after: 160 },
+    }));
+
+    const containerParas = Array.from(containerEl.querySelectorAll('.text-para')).map(p => p.innerHTML);
+    docChildren.push(...containerParas.map(html => new Paragraph({
+      children: buildParagraphRuns(html, window.docx),
+      alignment: AlignmentType.BOTH,
+      indent: { firstLine: 480 },
+      spacing: { line: 360, lineRule: 'auto', after: 80 },
+    })));
+
+    if (containerChartInstance) {
+      try {
+        const canvas = document.getElementById('containerChart');
+        if (canvas) {
+          const imgBase64 = canvas.toDataURL('image/png');
+          if (imgBase64) {
+            const imgData = base64ToUint8Array(imgBase64);
+            const aspectRatio = canvas.height / canvas.width;
+            const imgWidthEmu = 5486400;
+            const imgHeightEmu = Math.round(imgWidthEmu * aspectRatio);
+            const imgWidthPx = Math.round(imgWidthEmu / 9144);
+            const imgHeightPx = Math.round(imgHeightEmu / 9144);
+            docChildren.push(
+              new Paragraph({ children: [], spacing: { before: 200 } }),
+              new Paragraph({
+                children: [new ImageRun({ data: imgData, transformation: { width: imgWidthPx, height: imgHeightPx } })],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 80 },
+              }),
+              new Paragraph({
+                children: [new TextRun({ text: '图：集装箱（含铁路）内贸玉米月度销售趋势', size: SIZE_CAPTION, font: { name: FONT_MAIN }, color: COLOR_CAPTION, italics: true })],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 320 },
+              }),
+            );
+          }
+        }
+      } catch (imgErr) {
+        console.warn('集装箱图表嵌入失败：', imgErr);
+      }
     }
   }
 

@@ -59,9 +59,9 @@ function renderChart(by_dept, prevTotals, deptTotals) {
     label: '环比(%)',
     data: momData,
     yAxisID: 'y2',
-    borderColor: '#f97316',
-    backgroundColor: 'rgba(249,115,22,0.12)',
-    pointBackgroundColor: momData.map(v => (v !== null && (v > y2Max || v < y2Min)) ? '#dc2626' : '#f97316'),
+    borderColor: '#1e40af',
+    backgroundColor: 'rgba(30, 64, 175, 0.12)',
+    pointBackgroundColor: momData.map(v => (v !== null && (v > y2Max || v < y2Min)) ? '#dc2626' : '#1e40af'),
     pointBorderColor: '#ffffff',
     pointBorderWidth: 2,
     pointRadius: momData.map(v => (v !== null && (v > y2Max || v < y2Min)) ? 0 : 6),
@@ -105,7 +105,7 @@ function renderChart(by_dept, prevTotals, deptTotals) {
         }
 
         c.save();
-        c.fillStyle = '#1a202c';
+        c.fillStyle = '#1e40af';
         c.font = 'bold 12px "Microsoft YaHei", sans-serif';
         c.textAlign = 'center';
         c.textBaseline = 'bottom';
@@ -121,7 +121,7 @@ function renderChart(by_dept, prevTotals, deptTotals) {
         const isOutlier = v > y2Max || v < y2Min;
 
         c.save();
-        c.fillStyle = isOutlier ? '#dc2626' : '#ea580c';
+        c.fillStyle = isOutlier ? '#dc2626' : '#1e40af';
         c.font = `bold 11px "Microsoft YaHei", sans-serif`;
         c.textAlign = 'center';
         c.textBaseline = 'bottom';
