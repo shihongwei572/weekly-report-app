@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>沿海大区运营周报生成</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- docx.js 用于生成真实 Word 文件（本地版本，挂载到 window.docx） -->
+  <script src="docx.min.js"></script>
+  <!-- FileSaver.js 用于触发下载（本地版本） -->
+  <script src="FileSaver.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ===== HEADER ===== -->
+  <header class="header">
+    <div class="hd-left">
+      <span class="logo-icon">📊</span>
+      <div>
+        <h1>沿海大区运营周报生成</h1>
+        <p class="subtitle">基于意向统计台账自动计算</p>
+      </div>
+    </div>
+    <div class="hd-right">
+      <button class="btn btn-ghost" onclick="copyText()">📋 复制文字</button>
+      <button class="btn btn-ghost" onclick="downloadChart()">🖼️ 下载图表</button>
+      <button class="btn btn-ghost" onclick="openSettings()">⚙️ 配置</button>
+      <button class="btn btn-primary" onclick="exportWord()">📄 导出Word</button>
+    </div>
+  </header>
+
+  <!-- ===== 模块切换 Tab ===== -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="intent" onclick="switchTab('intent')">📋 意向销售</button>
+    <button class="tab-btn" data-tab="contract" onclick="switchTab('contract')">📑 销售签约</button>
+    <button class="tab-btn" data-tab="settle" onclick="switchTab('settle')">🚚 销售结算</button>
+    <button class="tab-btn" data-tab="lastmile" onclick="switchTab('lastmile')">📍 最后一公里</button>
+    <button class="tab-btn" data-tab="container" onclick="switchTab('container')">📦 集装箱玉米</button>
+  </div>
+
+  <div class="layout">
+
+    <!-- ===== 最左侧：流程进度 ===== -->
+    <aside class="flow-sidebar" id="flowSidebar">
+      <div class="flow-sequence">
+        <div class="flow-step" id="flow-step-1">
+          <div class="flow-dot">1</div>
+          <div class="flow-label">上传台账</div>
+        </div>
+        <div class="flow-line"></div>
+        <div class="flow-step" id="flow-step-2">
+          <div class="flow-dot">2</div>
+          <div class="flow-label">配置筛选</div>
+        </div>
+        <div class="flow-line"></div>
+        <div class="flow-step" id="flow-step-3">
+          <div class="flow-dot">3</div>
+          <div class="flow-label">生成数据</div>
+        </div>
+        <div class="flow-line"></div>
+        <div class="flow-step" id="flow-step-4">
+          <div class="flow-dot">4</div>
+          <div class="flow-label">导出Word</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== 左侧：上传 & 配置 ===== -->
+    <aside class="sidebar">
+
+      <!-- ===== 意向销售模块（默认显示）===== -->
+      <div id="tab-intent-sidebar">
+        <div class="card">
+          <div class="card-title">⚙️ 报告配置</div>
+          <div class="form-row">
+            <label>报告周期（开始日期）</label>
+            <input type="date" id="cfgDateStart" value="2026-05-16" />
+          </div>
+          <div class="form-row">
+            <label>报告周期（结束日期）</label>
+            <input type="date" id="cfgDateEnd" value="2026-05-22" />
+          </div>
+          <div class="week-hint-row">
+            <div class="week-hint-label">推算周数（仅供参考）</div>
+            <div class="week-hint-badge" id="weekHintBadge">第20周</div>
+          </div>
+          <div class="form-row" style="margin-top:8px">
+            <label>报告周数（可自行填写）</label>
+            <input type="number" id="cfgWeek" value="20" min="1" max="53" />
+            <span class="hint">以上为系统推算值，如有偏差请手动修改</span>
+          </div>
+          <div class="form-row">
+            <label>大区名称</label>
+            <select id="cfgRegion" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="沿海大区" selected>沿海大区</option>
+              <option value="珠三角">珠三角</option>
+              <option value="粤西">粤西</option>
+              <option value="广西">广西</option>
+              <option value="福建">福建</option>
+              <option value="海南">海南</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card card-upload" id="uploadCard">
+          <div class="card-title">📂 上传意向统计</div>
+          <div class="upload-zone" id="uploadZone"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleDrop(event)">
+            <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFile(event)" hidden />
+            <div class="upload-placeholder" onclick="document.getElementById('fileInput').click()">
+              <div class="upload-icon">📤</div>
+              <p>点击上传 / 拖拽文件</p>
+              <small>1-意向统计.xlsx</small>
+            </div>
+          </div>
+          <div class="upload-status" id="uploadStatus"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📈 累计意向</div>
+          <div class="ytd-auto-row" id="ytdAutoRow">
+            <span class="ytd-auto-label">本年累计意向（自动）</span>
+            <span class="ytd-auto-value" id="ytdAutoValue">—</span>
+          </div>
+          <div class="form-row" style="margin-top:10px">
+            <label>同比变化（万吨，减为负）</label>
+            <input type="number" id="cfgYtdYoy" value="-38" step="0.01" />
+          </div>
+          <div class="form-row">
+            <label>内贸玉米同比变化（万吨）</label>
+            <input type="number" id="cfgCornYoy" value="-76" step="0.01" />
+          </div>
+          <div class="form-row">
+            <label>截止日期</label>
+            <input type="date" id="cfgCutoffDate" value="2026-05-15" />
+          </div>
+          <button class="btn btn-sm btn-outline" style="margin-top:8px;width:100%" onclick="refreshOutput()">🔄 刷新输出</button>
+        </div>
+      </div>
+
+      <!-- ===== 销售签约模块（默认隐藏）===== -->
+      <div id="tab-contract-sidebar" style="display:none">
+        <div class="card">
+          <div class="card-title">⚙️ 签约配置</div>
+          <div class="form-row">
+            <label>统计截止日期</label>
+            <input type="date" id="contractCutoffDate" value="2026-05-15" />
+          </div>
+          <div class="form-row">
+            <label>大区名称</label>
+            <select id="contractRegion" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="沿海大区" selected>沿海大区</option>
+              <option value="珠三角">珠三角</option>
+              <option value="粤西">粤西</option>
+              <option value="广西">广西</option>
+              <option value="福建">福建</option>
+              <option value="海南">海南</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card card-upload">
+          <div class="card-title">📂 上传销售运营台账贴表</div>
+          <div class="upload-zone" id="contractUploadZone"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleContractDrop(event)">
+            <input type="file" id="contractFileInput" accept=".xlsx,.xls" onchange="handleContractFile(event)" hidden />
+            <div class="upload-placeholder" onclick="document.getElementById('contractFileInput').click()">
+              <div class="upload-icon">📤</div>
+              <p>点击上传 / 拖拽文件</p>
+              <small>销售运营台账贴表.xlsx</small>
+            </div>
+          </div>
+          <div class="upload-status" id="contractUploadStatus"></div>
+        </div>
+
+        <!-- 筛选条件 -->
+        <div class="card">
+          <div class="card-title">🔍 筛选条件</div>
+          <div class="form-row">
+            <label>26年纳入签约合同</label>
+            <div class="checkbox-group" id="contractFilter" onchange="onContractFilterChange()">
+              <label class="checkbox-item">
+                <input type="checkbox" value="25年结转">
+                <span>25年结转</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" value="是" checked>
+                <span>是</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>计算列</label>
+            <select id="contractValueCol" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="26年合同量（含结转）-签约" selected>26年合同量（含结转）-签约</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>数据单位</label>
+            <select id="contractUnit" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="auto" selected>自动检测</option>
+              <option value="ton">吨（需÷10000）</option>
+              <option value="wan">万吨（直接显示）</option>
+            </select>
+          </div>
+          <button class="btn btn-sm btn-outline" style="margin-top:8px;width:100%" onclick="refreshContractOutput()">🔄 刷新输出</button>
+        </div>
+
+      </div>
+
+      <!-- ===== 销售结算模块（默认隐藏）===== -->
+      <div id="tab-settle-sidebar" style="display:none">
+        <div class="card">
+          <div class="card-title">⚙️ 结算配置</div>
+          <div class="form-row">
+            <label>统计截止日期</label>
+            <input type="date" id="settleCutoffDate" value="2026-05-15" />
+          </div>
+          <div class="form-row">
+            <label>大区名称</label>
+            <select id="settleRegion" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="沿海大区" selected>沿海大区</option>
+              <option value="珠三角">珠三角</option>
+              <option value="粤西">粤西</option>
+              <option value="广西">广西</option>
+              <option value="福建">福建</option>
+              <option value="海南">海南</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card card-upload">
+          <div class="card-title">📂 上传发货清单</div>
+          <div class="upload-zone" id="settleUploadZone"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleSettleDrop(event)">
+            <input type="file" id="settleFileInput" accept=".xlsx,.xls" onchange="handleSettleFile(event)" hidden />
+            <div class="upload-placeholder" onclick="document.getElementById('settleFileInput').click()">
+              <div class="upload-icon">📤</div>
+              <p>点击上传 / 拖拽文件</p>
+              <small>销售发货清单.xlsx</small>
+            </div>
+          </div>
+          <div class="upload-status" id="settleUploadStatus"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🔍 筛选说明</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.8">
+            <div>📅 日期字段：<b>审批结束日期</b></div>
+            <div>📦 数量字段：<b>本次发货量(吨)</b></div>
+            <div>🌾 品种字段：<b>品种</b></div>
+            <div>🏢 经营部：从<b>销售组</b>自动解析</div>
+          </div>
+          <button class="btn btn-sm btn-outline" style="margin-top:12px;width:100%" onclick="refreshSettleOutput()">🔄 刷新输出</button>
+        </div>
+      </div>
+
+      <!-- ===== 最后一公里模块（默认隐藏）===== -->
+      <div id="tab-lastmile-sidebar" style="display:none">
+        <div class="card">
+          <div class="card-title">⚙️ 统计配置</div>
+          <div class="form-row">
+            <label>统计起始日期</label>
+            <input type="date" id="lastmileStartDate" value="2026-01-01" />
+          </div>
+          <div class="form-row">
+            <label>统计截止日期</label>
+            <input type="date" id="lastmileCutoffDate" value="2026-05-15" />
+          </div>
+          <div class="form-row">
+            <label>大区名称</label>
+            <select id="lastmileRegion" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="沿海大区" selected>沿海大区</option>
+              <option value="珠三角">珠三角</option>
+              <option value="粤西">粤西</option>
+              <option value="广西">广西</option>
+              <option value="福建">福建</option>
+              <option value="海南">海南</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card card-upload">
+          <div class="card-title">📂 上传销售运营台账</div>
+          <div class="upload-zone" id="lastmileUploadZone"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleLastmileDrop(event)">
+            <input type="file" id="lastmileFileInput" accept=".xlsx,.xls" onchange="handleLastmileFile(event)" hidden />
+            <div class="upload-placeholder" onclick="document.getElementById('lastmileFileInput').click()">
+              <div class="upload-icon">📤</div>
+              <p>点击上传 / 拖拽文件</p>
+              <small>销售运营台账.xlsx</small>
+            </div>
+          </div>
+          <div class="upload-status" id="lastmileUploadStatus"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🔍 筛选条件</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.9">
+            <div>✅ 纳入签约量统计：<b>是</b></div>
+            <div>📅 日期字段：<b>提交时间/签约时间</b></div>
+            <div>📦 数量字段：<b>合同签订量-万吨</b></div>
+            <div>🌾 品种字段：<b>品种</b>（饲/食用→同类合并）</div>
+            <div>🏢 经营部：<b>经营部</b>列</div>
+          </div>
+          <div class="form-row" style="margin-top:10px">
+            <label>最后一公里：提货方式</label>
+            <select id="lastmileTihuoMode" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="配送" selected>配送</option>
+              <option value="自提">自提</option>
+            </select>
+          </div>
+          <button class="btn btn-sm btn-outline" style="margin-top:8px;width:100%" onclick="refreshLastmileOutput()">🔄 刷新输出</button>
+        </div>
+      </div>
+
+      <!-- ===== 集装箱玉米模块（默认隐藏）===== -->
+      <div id="tab-container-sidebar" style="display:none">
+        <div class="card">
+          <div class="card-title">⚙️ 统计配置</div>
+          <div class="form-row">
+            <label>统计起始日期</label>
+            <input type="date" id="containerStartDate" value="2026-01-01" />
+          </div>
+          <div class="form-row">
+            <label>统计截止日期</label>
+            <input type="date" id="containerCutoffDate" value="2026-05-15" />
+          </div>
+          <div class="form-row">
+            <label>大区名称</label>
+            <select id="containerRegion" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="沿海大区" selected>沿海大区</option>
+              <option value="珠三角">珠三角</option>
+              <option value="粤西">粤西</option>
+              <option value="广西">广西</option>
+              <option value="福建">福建</option>
+              <option value="海南">海南</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card card-upload">
+          <div class="card-title">📂 上传/复用销售运营台账</div>
+          <div id="containerReuseHint" style="display:none;padding:10px;background:#f0fdf4;border-radius:6px;font-size:13px;margin-bottom:8px;">
+            <span style="color:#16a34a">✅ 已检测到销售运营台账.xlsx 已加载，可直接点击刷新输出</span>
+          </div>
+          <div class="upload-zone" id="containerUploadZone"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handleContainerDrop(event)">
+            <input type="file" id="containerFileInput" accept=".xlsx,.xls" onchange="handleContainerFile(event)" hidden />
+            <div class="upload-placeholder" onclick="document.getElementById('containerFileInput').click()">
+              <div class="upload-icon">📤</div>
+              <p>点击上传 / 拖拽文件</p>
+              <small>销售运营台账.xlsx（或与最后一公里共享）</small>
+            </div>
+          </div>
+          <div class="upload-status" id="containerUploadStatus"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">🔍 筛选条件</div>
+          <div style="font-size:12px;color:var(--text-muted);line-height:1.9">
+            <div>✅ 纳入签约量统计：<b>是</b></div>
+            <div>📅 日期字段：<b>提交时间/签约时间</b></div>
+            <div>📦 数量字段：<b>合同签订量-万吨</b></div>
+            <div>🌾 品种字段：<b>国产玉米</b></div>
+            <div>🏢 经营部：<b>经营部</b>列</div>
+          </div>
+          <div class="form-row" style="margin-top:10px">
+            <label>包装方式</label>
+            <select id="containerPackMode" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="集装箱" selected>集装箱</option>
+              <option value="全部">全部</option>
+            </select>
+          </div>
+          <button class="btn btn-sm btn-outline" style="margin-top:8px;width:100%" onclick="refreshContainerOutput()">🔄 刷新输出</button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ===== 右侧：结果 ===== -->
+    <main class="content">
+
+      <!-- ===== 意向销售结果 ===== -->
+      <div id="tab-intent-content">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📁</div>
+          <p>请在左侧上传「1-意向统计.xlsx」</p>
+          <small>上传后自动计算本周意向销售数据</small>
+        </div>
+        <div id="resultArea" style="display:none">
+          <div class="result-block">
+            <div class="block-header">
+              <h2>本周意向销售概览</h2>
+              <span class="week-badge" id="weekBadge">第20周</span>
+            </div>
+            <div class="kpi-grid" id="kpiGrid"></div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📝 自动生成文字</h2>
+              <button class="btn btn-sm btn-outline" onclick="copyText()">复制</button>
+            </div>
+            <div class="text-output" id="textOutput"></div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📊 本周各经营部意向销售及环比情况</h2>
+              <button class="btn btn-sm btn-outline" onclick="downloadChart()">🖼️ 下载图表</button>
+            </div>
+            <div class="chart-container">
+              <canvas id="deptChart"></canvas>
+            </div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📋 各经营部品种明细</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="detailTable"></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 销售签约结果 ===== -->
+      <div id="tab-contract-content" style="display:none">
+        <div class="empty-state" id="contractEmptyState">
+          <div class="empty-icon">📁</div>
+          <p>请在左侧上传「销售运营台账贴表.xlsx」</p>
+          <small>上传后自动计算销售签约数据</small>
+        </div>
+        <div id="contractResultArea" style="display:none">
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📝 销售签约文字</h2>
+              <button class="btn btn-sm btn-outline" onclick="copyContractText()">复制</button>
+            </div>
+            <div class="text-output" id="contractTextOutput"></div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📊 各经营部签约及完成率情况</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="contractTable"></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 销售结算结果 ===== -->
+      <div id="tab-settle-content" style="display:none">
+        <div class="empty-state" id="settleEmptyState">
+          <div class="empty-icon">📁</div>
+          <p>请在左侧上传「销售发货清单.xlsx」</p>
+          <small>上传后自动计算销售结算数据</small>
+        </div>
+        <div id="settleResultArea" style="display:none">
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📝 销售结算文字</h2>
+              <button class="btn btn-sm btn-outline" onclick="copySettleText()">复制</button>
+            </div>
+            <div class="text-output" id="settleTextOutput"></div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📊 各经营部结算及完成率情况</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="settleTable"></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 最后一公里结果 ===== -->
+      <div id="tab-lastmile-content" style="display:none">
+        <div class="empty-state" id="lastmileEmptyState">
+          <div class="empty-icon">📁</div>
+          <p>请在左侧上传「销售运营台账.xlsx」</p>
+          <small>上传后自动计算最后一公里签约数据</small>
+        </div>
+        <div id="lastmileResultArea" style="display:none">
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📝 最后一公里文字</h2>
+              <button class="btn btn-sm btn-outline" onclick="copyLastmileText()">复制</button>
+            </div>
+            <div class="text-output" id="lastmileTextOutput"></div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📊 各经营部最后一公里签约情况（按经营部）</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="lastmileDeptTable"></table>
+            </div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📊 各品种最后一公里签约情况（按品种）</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="lastmileVarietyTable"></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 集装箱玉米结果 ===== -->
+      <div id="tab-container-content" style="display:none">
+        <div class="empty-state" id="containerEmptyState">
+          <div class="empty-icon">📁</div>
+          <p>请在左侧上传「销售运营台账.xlsx」</p>
+          <small>支持与最后一公里模块共享销售运营台账</small>
+        </div>
+        <div id="containerResultArea" style="display:none">
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📝 集装箱玉米文字</h2>
+              <button class="btn btn-sm btn-outline" onclick="copyContainerText()">复制</button>
+            </div>
+            <div class="text-output" id="containerTextOutput"></div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📊 各经营部集装箱玉米签约情况</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="containerTable"></table>
+            </div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📈 集装箱（含铁路）内贸玉米月度销售趋势</h2>
+              <button class="btn btn-sm btn-outline" onclick="downloadContainerChart()">🖼️ 下载图表</button>
+            </div>
+            <div class="chart-container">
+              <canvas id="containerChart"></canvas>
+            </div>
+            <div class="table-wrap" style="margin-top:16px;">
+              <table class="data-table" id="containerMonthlyTable"></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="config.js"></script>
+<script src="utils.js"></script>
+<script src="modules/settings.js"></script>
+<script src="modules/intent.js"></script>
+<script src="chart.js"></script>
+<script src="modules/contract.js"></script>
+<script src="modules/settle.js"></script>
+<script src="modules/lastmile.js"></script>
+<script src="modules/container.js"></script>
+<script src="word-export.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
