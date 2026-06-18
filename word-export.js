@@ -164,7 +164,7 @@ function buildSettleWordTable(docx, data) {
   const thin = (color = 'CBD5E1') => ({ style: BorderStyle.SINGLE, size: 4, color });
   const b = (color = 'CBD5E1') => ({ top: thin(color), bottom: thin(color), left: thin(color), right: thin(color) });
 
-  function makeCell(text, opts = {}) {
+   function makeCell(text, opts = {}) {
     const {
       bold = false, colSpan = 1,
       align = AlignmentType.CENTER,
@@ -178,7 +178,7 @@ function buildSettleWordTable(docx, data) {
       children: [new Paragraph({
         children: [new TextRun({ text: String(text), bold, size, font: { name: '宋体' }, color: fg })],
         alignment: align,
-        spacing: { before: 30, after: 30 },
+        spacing: { before: 60, after: 60 },
       })],
     });
   }
@@ -212,7 +212,7 @@ function buildSettleWordTable(docx, data) {
   });
 
   const totalCols = 1 + columns.length + 1;
-  const columnWidths = [1100, ...Array(totalCols - 2).fill(700), 800];
+  const columnWidths = [1200, ...Array(totalCols - 2).fill(900), 900];
 
   return new Table({
     rows: [headerRow, ...dataRows],

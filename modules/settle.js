@@ -161,31 +161,5 @@ function copySettleText() {
   Utils.copyToClipboard(el.innerText);
 }
 
-function exportSettleWord() {
-  if (!settleResult) {
-    showToast('❌ 请先解析数据再导出！');
-    return;
-  }
-  const { deptData, totals } = settleResult;
-  exportWord('结算', {
-    text: document.getElementById('settleTextOutput').innerText,
-    deptData,
-    totals,
-    cols: [
-      { name: '内贸玉米', key: 'corn' },
-      { name: '进口高粱', key: 'sorghum' },
-      { name: '进口大麦', key: 'barley' },
-      { name: '进口木薯片', key: 'cassava' },
-      { name: '进口葵花籽粕', key: 'sunflower' },
-      { name: '进口DDGS', key: 'ddgs' },
-      { name: '小麦', key: 'wheat' },
-      { name: '食用稻谷', key: 'rice' },
-      { name: '大豆', key: 'soybean' }
-    ],
-    depts: ['珠三角', '粤西', '广西', '福建', '海南']
-  });
-}
-
 window.handleDirectSettlePaste = handleDirectSettlePaste;
 window.copySettleText = copySettleText;
-window.exportSettleWord = exportSettleWord;
