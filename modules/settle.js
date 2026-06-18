@@ -32,10 +32,11 @@ function initSettleInputTable() {
   SETTLE_DEPTS.forEach(d => {
     tbody += `<tr style="height:32px;">`;
     tbody += `<td style="background:#f8fafc;position:sticky;left:0;z-index:9;border:1px solid #e2e8f0;padding:6px 8px;font-size:12px;font-weight:600;">${d}</td>`;
-    SETTLE_COLS.forEach(c => {
+    SETTLE_COLS.forEach((c, ci) => {
       const inputId = `settle-input-${d}-${c.key}`;
       tbody += `<td style="border:1px solid #e2e8f0;padding:0;">`;
-      tbody += `<input id="${inputId}" type="number" step="0.01" min="0" value="0"
+      tbody += `<input id="${inputId}" type="text" inputmode="decimal" value="0"
+        data-dept="${d}" data-col="${c.key}" data-col-idx="${ci}"
         style="width:100%;height:32px;border:none;outline:none;padding:0 6px;font-size:12px;text-align:right;"
         onchange="updateSettleData('${d}','${c.key}',this.value)" />`;
       tbody += `</td>`;
@@ -45,10 +46,82 @@ function initSettleInputTable() {
   tbody += '</tbody>';
 
   table.innerHTML = thead + tbody;
+
+  table.addEventListener('paste', handleTablePaste);
+}
+
+function handleTablePaste(e) {
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if (!text.trim()) return;
+
+  const rows = text.split(/\r?\n/).map(r => r.trim()).filter(r => r.length > 0);
+  if (rows.length === 0) return;
+
+  let pasteStartDept = null;
+  let pasteStartCol = null;
+
+  const activeEl = document.activeElement;
+  if (activeEl && activeEl.dataset && activeEl.dataset.dept) {
+    pasteStartDept = activeEl.dataset.dept;
+    pasteStartCol = parseInt(activeEl.dataset.colIdx) || 0;
+  }
+
+  let filledCount = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const cells = rows[i].split(/\t/).map(c => c.trim());
+    let targetDept = null;
+
+    if (pasteStartDept) {
+      const startIdx = SETTLE_DEPTS.indexOf(pasteStartDept);
+      if (startIdx >= 0 && startIdx + i < SETTLE_DEPTS.length) {
+        targetDept = SETTLE_DEPTS[startIdx + i];
+      }
+    }
+
+    if (!targetDept) {
+      const firstCell = cells[0];
+      for (const d of SETTLE_DEPTS) {
+        if (firstCell.includes(d)) {
+          targetDept = d;
+          break;
+        }
+      }
+    }
+
+    if (!targetDept) continue;
+
+    let startCol = pasteStartDept ? pasteStartCol : 0;
+
+    for (let j = 0; j < cells.length; j++) {
+      const cellVal = cells[j];
+      const colIdx = startCol + j;
+
+      if (colIdx >= SETTLE_COLS.length) continue;
+
+      let num = 0;
+      const cleaned = cellVal.replace(/,/g, '').replace('-', '0').trim();
+      if (cleaned) num = parseFloat(cleaned) || 0;
+
+      const col = SETTLE_COLS[colIdx];
+      settleTableData[targetDept][col.key] = num;
+
+      const inputEl = document.getElementById(`settle-input-${targetDept}-${col.key}`);
+      if (inputEl) {
+        inputEl.value = num > 0 ? num : '0';
+      }
+
+      filledCount++;
+    }
+  }
+
+  showToast(`✅ 已粘贴 ${filledCount} 个数据！`);
 }
 
 function updateSettleData(dept, col, value) {
-  settleTableData[dept][col] = parseFloat(value) || 0;
+  const cleaned = String(value).replace(/,/g, '').trim();
+  settleTableData[dept][col] = parseFloat(cleaned) || 0;
 }
 
 function generateSettleFromTable() {
