@@ -566,11 +566,26 @@ function refreshContractOutput() {
 
     document.getElementById('contractTextOutput').innerHTML = `<div class="text-para">${contractText}</div>`;
 
-    renderContractTable(detailData, totalSigned, factor, subDeptMaps);
+     renderContractTable(detailData, totalSigned, factor, subDeptMaps);
 
-    updateFlowSequence(3);
+     if (settleWorkbook === null) {
+       settleWorkbook = contractWorkbook;
+       updateTabWorkbookStatus('settle', true, '销售运营台账.xlsx');
+     }
+     if (lastmileWorkbook === null) {
+       lastmileWorkbook = contractWorkbook;
+       updateTabWorkbookStatus('lastmile', true, '销售运营台账.xlsx');
+     }
+     if (containerWorkbook === null) {
+       containerWorkbook = contractWorkbook;
+       updateTabWorkbookStatus('container', true, '销售运营台账.xlsx');
+       const reuseHint = document.getElementById('containerReuseHint');
+       if (reuseHint) reuseHint.style.display = '';
+     }
 
-    showToast(`✅ 计算完成，共解析 ${rowCount} 条记录（单位：${factor === 1 ? '万吨' : '吨→万吨'}）`);
+     updateFlowSequence(3);
+
+     showToast(`✅ 计算完成，共解析 ${rowCount} 条记录（单位：${factor === 1 ? '万吨' : '吨→万吨'}）`);
 
   } catch (err) {
     showToast('❌ 计算失败：' + err.message);

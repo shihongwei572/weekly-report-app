@@ -1,5 +1,13 @@
 var settleWorkbook = null;
 
+function getSettleWorkbook() {
+  if (settleWorkbook) return settleWorkbook;
+  if (contractWorkbook) return contractWorkbook;
+  if (lastmileWorkbook) return lastmileWorkbook;
+  if (containerWorkbook) return containerWorkbook;
+  return null;
+}
+
 const SETTLE_VARIETY_MAP = getConfig('settleVarietyMap') || CONFIG.settleVarietyMap;
 
 function mapSettleVariety(rawVariety) {
@@ -51,27 +59,38 @@ function processSettleFile(file) {
 }
 
 function calcSettleData() {
-  if (!settleWorkbook) return null;
+  const wb = getSettleWorkbook();
+  if (!wb) return null;
 
-  if (settleWorkbook.__isOCRData) {
+  if (wb.__isOCRData) {
     return window.settleOCRData || parseSettleTableFromOCRManual();
   }
 
-  const ws   = settleWorkbook.Sheets[settleWorkbook.SheetNames[0]];
+  const ws   = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
   if (rows.length < 2) return null;
 
-  const header = rows[0].map(v => String(v ?? '').trim());
+  let headerRow = 0;
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
+    if (rows[i] && rows[i].some(h => h && String(h).includes('经营部'))) { headerRow = i; break; }
+  }
+  const header = rows[headerRow].map(v => String(v ?? '').trim());
   const H = {};
   header.forEach((h, i) => { H[h] = i; });
 
-  const iDate    = H['审批结束日期']   ?? -1;
-  const iQty     = H['本次发货量(吨)'] ?? -1;
-  const iVariety = H['品种']           ?? -1;
-  const iGroup   = H['销售组']         ?? -1;
+  let iDate = H['日期'] ?? H['签约日期'] ?? H['合同日期'] ?? -1;
+  if (iDate < 0) {
+    for (let i = 0; i < header.length; i++) {
+      const h = header[i];
+      if (/日期|时间/i.test(h)) { iDate = i; break; }
+    }
+  }
+  const iQty = H['26年合同量（含结转）-签约'] ?? H['合同签订量-万吨'] ?? H['签约量'] ?? H['本次发货量(吨)'] ?? -1;
+  const iVariety = H['品种'] ?? -1;
+  const iDept = H['经营部'] ?? -1;
 
   if (iQty < 0 || iVariety < 0) {
-    showToast('❌ 找不到「本次发货量(吨)」或「品种」列');
+    showToast('❌ 找不到数量列或品种列');
     return null;
   }
 
@@ -84,8 +103,9 @@ function calcSettleData() {
   });
 
   let rowCount = 0;
+  const factor = iQty >= 0 && String(header[iQty]).includes('万吨') ? 10000 : 1;
 
-  for (let i = 1; i < rows.length; i++) {
+  for (let i = headerRow + 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row) continue;
 
@@ -94,19 +114,24 @@ function calcSettleData() {
       if (dateVal && dateVal > cutoffStr) continue;
     }
 
-    const qty = safeFloat(row[iQty]);
+    const qty = safeFloat(row[iQty]) * factor;
     if (qty <= 0) continue;
 
     const rawVariety = String(row[iVariety] ?? '').trim();
     const groupKey   = mapSettleVariety(rawVariety);
     if (!groupKey) continue;
 
-    const salesGroup = String(row[iGroup] ?? '').trim();
     let dept = null;
-    for (const d of DEPTS_SETTLE) {
-      if (salesGroup.includes(d) && salesGroup.includes('经营部')) { dept = d; break; }
+    if (iDept >= 0) {
+      dept = String(row[iDept] ?? '').trim();
     }
-    if (!dept) continue;
+    if (!dept || !DEPTS_SETTLE.includes(dept)) {
+      const salesGroup = String(row[H['销售组']] ?? row[H['部门']] ?? '').trim();
+      for (const d of DEPTS_SETTLE) {
+        if (salesGroup.includes(d) && salesGroup.includes('经营部')) { dept = d; break; }
+      }
+    }
+    if (!dept || !DEPTS_SETTLE.includes(dept)) continue;
 
     deptData[dept][groupKey] += qty;
     rowCount++;
@@ -168,6 +193,21 @@ function refreshSettleOutput() {
     document.getElementById('settleTextOutput').innerHTML = `<div class="text-para">${settleText}</div>`;
 
     renderSettleTable(deptData, total, groups, DEPTS, region, toW);
+
+    if (contractWorkbook === null && settleWorkbook) {
+      contractWorkbook = settleWorkbook;
+      updateTabWorkbookStatus('contract', true, '销售运营台账.xlsx');
+    }
+    if (lastmileWorkbook === null && settleWorkbook) {
+      lastmileWorkbook = settleWorkbook;
+      updateTabWorkbookStatus('lastmile', true, '销售运营台账.xlsx');
+    }
+    if (containerWorkbook === null && settleWorkbook) {
+      containerWorkbook = settleWorkbook;
+      updateTabWorkbookStatus('container', true, '销售运营台账.xlsx');
+      const reuseHint = document.getElementById('containerReuseHint');
+      if (reuseHint) reuseHint.style.display = '';
+    }
 
     updateFlowSequence(3);
     showToast(`✅ 计算完成，共解析 ${rowCount} 条记录`);

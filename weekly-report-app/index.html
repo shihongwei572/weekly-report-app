@@ -239,7 +239,7 @@
         </div>
 
         <div class="card card-upload">
-          <div class="card-title">📂 上传数据</div>
+          <div class="card-title">📂 上传销售运营台账</div>
           <div class="upload-zone" id="settleUploadZone"
                ondragover="event.preventDefault();this.classList.add('drag')"
                ondragleave="this.classList.remove('drag')"
@@ -247,9 +247,12 @@
             <input type="file" id="settleFileInput" accept=".xlsx,.xls" onchange="handleSettleFile(event)" hidden />
             <div class="upload-placeholder" onclick="document.getElementById('settleFileInput').click()">
               <div class="upload-icon">📤</div>
-              <p>点击上传 Excel 文件</p>
-              <small>销售发货清单.xlsx</small>
+              <p>点击上传 / 拖拽文件</p>
+              <small>销售运营台账.xlsx（与合同共享）</small>
             </div>
+          </div>
+          <div class="upload-status" id="settleUploadStatus"></div>
+        </div>
           </div>
           <div class="upload-status" id="settleUploadStatus"></div>
         </div>
