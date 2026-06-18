@@ -116,22 +116,30 @@ function switchTab(tab) {
     const resultArea = document.getElementById('lastmileResultArea');
     const hasResult = resultArea && resultArea.style.display !== 'none';
     const hasBook = getLastmileWorkbook();
-    const isReused = hasBook && !lastmileWorkbook && !!containerWorkbook;
+    let reuseSource = null;
+    if (hasBook && !lastmileWorkbook) {
+      if (containerWorkbook) reuseSource = '集装箱玉米';
+      else if (contractWorkbook) reuseSource = '销售签约';
+    }
     updateFlowSequence(hasBook ? (hasResult ? 3 : 1) : 0);
-    updateTabWorkbookStatus('lastmile', hasBook, '销售运营台账.xlsx', isReused ? '集装箱玉米' : null);
+    updateTabWorkbookStatus('lastmile', hasBook, '销售运营台账.xlsx', reuseSource);
   } else if (tab === 'container') {
     if (chartBtn) chartBtn.style.display = '';
     if (layout) layout.classList.add('with-flow');
     const resultArea = document.getElementById('containerResultArea');
     const hasResult = resultArea && resultArea.style.display !== 'none';
     const hasBook = getContainerWorkbook();
-    const isReused = hasBook && !containerWorkbook && !!lastmileWorkbook;
+    let reuseSource = null;
+    if (hasBook && !containerWorkbook) {
+      if (lastmileWorkbook) reuseSource = '最后一公里';
+      else if (contractWorkbook) reuseSource = '销售签约';
+    }
     const reuseHint = document.getElementById('containerReuseHint');
     if (reuseHint) {
-      reuseHint.style.display = isReused ? '' : 'none';
+      reuseHint.style.display = reuseSource ? '' : 'none';
     }
     updateFlowSequence(hasBook ? (hasResult ? 3 : 1) : 0);
-    updateTabWorkbookStatus('container', hasBook, '销售运营台账.xlsx', isReused ? '最后一公里' : null);
+    updateTabWorkbookStatus('container', hasBook, '销售运营台账.xlsx', reuseSource);
   }
 }
 

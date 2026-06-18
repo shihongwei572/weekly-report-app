@@ -7,7 +7,7 @@ const SETTLE_COLUMNS = [
   { key: '进口大麦',    match: ['进口大麦'] },
   { key: '进口木薯片',  match: ['进口木薯片'] },
   { key: '进口葵花籽粕', match: ['进口葵花籽粕'] },
-  { key: 'DDGS',       match: ['DDGS', 'ddgs'] },
+  { key: 'DDGS',       match: ['DDGS', 'ddgs', '进口 DDGS', '进口DDGS'] },
   { key: '小麦',       match: ['小麦'] },
   { key: '食用稻谷',    match: ['食用稻谷', '稻谷'] },
   { key: '大豆',       match: ['大豆'] },
@@ -23,12 +23,12 @@ function setSettleStatus(type, msg) {
   el.style.display = 'block';
 }
 
-function matchColumn(headerText) {
-  const h = String(headerText || '').trim();
-  for (const col of SETTLE_COLUMNS) {
-    if (col.match.some(m => h.includes(m))) return col.key;
+function setDebugInfo(text) {
+  const el = document.getElementById('settleDebugInfo');
+  if (el) {
+    el.style.display = 'block';
+    el.textContent = text;
   }
-  return null;
 }
 
 function handleSettlePaste() {
@@ -48,14 +48,27 @@ function handleSettlePaste() {
   const colMap = [];
   let deptIdx = -1;
 
-  headerCells.forEach((h, i) => {
-    if (h.includes('经营部') || SETTLE_DEPTS.some(d => h.includes(d))) {
-      deptIdx = i;
-    } else {
-      const matched = matchColumn(h);
-      if (matched) colMap.push({ idx: i, key: matched });
+  for (let i = 0; i < headerCells.length; i++) {
+    const h = headerCells[i];
+    
+    if (deptIdx < 0) {
+      for (let j = 1; j < lines.length; j++) {
+        const rowCells = lines[j].split(/\t/).map(c => c.trim());
+        const cellVal = rowCells[i] || '';
+        if (SETTLE_DEPTS.some(d => cellVal.includes(d))) {
+          deptIdx = i;
+          break;
+        }
+      }
     }
-  });
+
+    for (const col of SETTLE_COLUMNS) {
+      if (col.match.some(m => h.includes(m))) {
+        colMap.push({ idx: i, key: col.key });
+        break;
+      }
+    }
+  }
 
   if (deptIdx < 0) deptIdx = 0;
 
@@ -71,6 +84,8 @@ function handleSettlePaste() {
     const cells = lines[i].split(/\t/).map(c => c.trim());
     const deptName = cells[deptIdx] || '';
 
+    if (deptName.includes('合计')) continue;
+
     let matchedDept = null;
     for (const d of SETTLE_DEPTS) {
       if (deptName.includes(d)) { matchedDept = d; break; }
@@ -78,7 +93,11 @@ function handleSettlePaste() {
     if (!matchedDept) continue;
 
     colMap.forEach(cm => {
-      const val = parseFloat((cells[cm.idx] || '').replace(/,/g, '')) || 0;
+      const rawVal = (cells[cm.idx] || '').trim();
+      let val = 0;
+      if (rawVal && rawVal !== '-') {
+        val = parseFloat(rawVal.replace(/,/g, '')) || 0;
+      }
       deptData[matchedDept][cm.key] += val;
     });
     rowCount++;
@@ -102,7 +121,6 @@ function refreshSettleOutputFromPaste() {
 
   try {
     const { deptData, total, rowCount } = settleParsedData;
-    const region = document.getElementById('settleRegion')?.value || '沿海大区';
     const toW = v => round2(v);
 
     let totalAll = 0;
@@ -154,7 +172,7 @@ function renderSettleTable(deptData, total) {
     let rowSum = 0;
 
     columns.forEach(c => {
-      const val = toW(data[c] || 0);
+      const val = round2(data[c] || 0);
       rowSum += val;
       tr += `<td class="td-num">${val > 0 ? val : '-'}</td>`;
     });
@@ -168,8 +186,6 @@ function renderSettleTable(deptData, total) {
 
   table.innerHTML = thead + tbody;
 }
-
-function toW(v) { return round2(v); }
 
 function calcSettleData() {
   return settleParsedData || null;

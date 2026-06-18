@@ -274,6 +274,7 @@ function copyLastmileText() {
 function getLastmileWorkbook() {
   if (lastmileWorkbook) return lastmileWorkbook;
   if (containerWorkbook) return containerWorkbook;
+  if (contractWorkbook) return contractWorkbook;
   return null;
 }
 

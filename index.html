@@ -243,9 +243,10 @@
           </div>
           <textarea id="settlePasteArea" placeholder="在此粘贴结算数据，例如：&#10;截止6.11结算量	内贸玉米	进口高粱	进口大麦	...&#10;珠三角	79.04	6.31	9.11	...&#10;粤西	63.47	5.74	7.69	..."
             style="width:100%;height:180px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:12px;resize:vertical;white-space:pre;"></textarea>
-          <button class="btn btn-sm btn-primary" style="margin-top:8px;width:100%" onclick="handleSettlePaste()">📊 解析并计算</button>
-          <div class="upload-status" id="settlePasteStatus"></div>
-        </div>
+           <button class="btn btn-sm btn-primary" style="margin-top:8px;width:100%" onclick="handleSettlePaste()">📊 解析并计算</button>
+           <div class="upload-status" id="settlePasteStatus"></div>
+           <div id="settleDebugInfo" style="display:none;margin-top:10px;padding:8px;background:#f5f7fa;border-radius:6px;font-family:monospace;font-size:11px;white-space:pre-wrap;max-height:200px;overflow:auto;"></div>
+         </div>
 
         <div class="card">
           <div class="card-title">🔍 筛选说明</div>

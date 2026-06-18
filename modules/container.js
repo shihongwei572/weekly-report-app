@@ -52,6 +52,7 @@ function processContainerFile(file) {
 function getContainerWorkbook() {
   if (containerWorkbook) return containerWorkbook;
   if (lastmileWorkbook) return lastmileWorkbook;
+  if (contractWorkbook) return contractWorkbook;
   return null;
 }
 
