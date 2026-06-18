@@ -1,9 +1,20 @@
 const SETTLE_DEPTS = ['珠三角', '粤西', '广西', '福建', '海南'];
+const COL_MAP = [
+  { name: '内贸玉米', key: 'corn' },
+  { name: '进口高粱', key: 'sorghum' },
+  { name: '进口大麦', key: 'barley' },
+  { name: '进口木薯片', key: 'cassava' },
+  { name: '进口葵花籽粕', key: 'sunflower' },
+  { name: '进口DDGS', key: 'ddgs' },
+  { name: '小麦', key: 'wheat' },
+  { name: '食用稻谷', key: 'rice' },
+  { name: '大豆', key: 'soybean' }
+];
 let settleResult = null;
 
 function parseNum(v) {
   const s = String(v || '').trim().replace(/,/g, '');
-  if (!s || s === '-' || !/^\d+(\.\d+)?$/.test(s)) return 0;
+  if (!s || s === '-') return 0;
   return parseFloat(s) || 0;
 }
 
@@ -14,54 +25,70 @@ function handleDirectSettlePaste() {
     return;
   }
 
-  text = text.replace(/  +/g, '\t').replace(/\t+/g, '\t');
+  // 把所有换行换成制表符，然后拆分单元格
+  const allCells = text.replace(/[\r\n]+/g, '\t').split(/\t/).map(c => c.trim());
+  if (allCells.length < 10) {
+    setStatus('err', '❌ 数据不足！');
+    return;
+  }
+
+  // 先找表头里每个品种的列位置
+  const colIndex = {};
+  for (let i = 0; i < allCells.length; i++) {
+    const cell = allCells[i];
+    for (const col of COL_MAP) {
+      if (cell.includes(col.name)) {
+        colIndex[col.key] = i;
+      }
+    }
+  }
+
+  // 检查所有列都找到了？
+  if (Object.keys(colIndex).length < 9) {
+    setStatus('err', '❌ 找不到对应的品种列，请检查粘贴的数据！');
+    return;
+  }
 
   const deptData = {};
   SETTLE_DEPTS.forEach(d => {
     deptData[d] = { corn:0, sorghum:0, barley:0, cassava:0, sunflower:0, ddgs:0, wheat:0, rice:0, soybean:0 };
   });
 
+  // 找每个经营部的位置
   for (const d of SETTLE_DEPTS) {
-    const idx = text.indexOf(d);
-    if (idx < 0) continue;
+    const deptIdx = allCells.indexOf(d);
+    if (deptIdx < 0) continue;
 
-    const subStr = text.slice(idx + d.length);
-    let cells = subStr.split(/\t/).map(p => p.trim());
-
-    const nums = [];
-    for (const c of cells) {
-      if (nums.length >= 9) break;
-      const num = parseNum(c);
-      nums.push(num);
+    // 计算这一行的第一个单元格到下一个经营部/合计的位置
+    let nextIdx = allCells.length;
+    for (const other of [...SETTLE_DEPTS, '合计']) {
+      const idx = allCells.indexOf(other, deptIdx + 1);
+      if (idx > deptIdx && idx < nextIdx) nextIdx = idx;
     }
 
-    if (nums.length >= 9) {
-      deptData[d].corn      = nums[0];
-      deptData[d].sorghum   = nums[1];
-      deptData[d].barley    = nums[2];
-      deptData[d].cassava   = nums[3];
-      deptData[d].sunflower = nums[4];
-      deptData[d].ddgs      = nums[5];
-      deptData[d].wheat     = nums[6];
-      deptData[d].rice      = nums[7];
-      deptData[d].soybean   = nums[8];
+    // 这一行的单元格是deptIdx 到 nextIdx - 之间
+    const rowCells = allCells.slice(deptIdx, nextIdx);
+    if (rowCells.length < 10) continue;
+
+    // 按列位置取数
+    for (const col of COL_MAP) {
+      // 这个品种在表头的列索引是colIndex[col.key]
+      // 相对这一行的偏移是 colIndex[col.key] - (第一列的索引？ 哦对！哦我之前没算偏移！
+      // 表头第一个列是截止6.11结算量，索引是headerFirstIdx，所以列的偏移是 colIndex[col.key] - headerFirstIdx
+      const headerFirstIdx = allCells.findIndex(c => c.includes('结算量') || c.includes('经营部'));
+      const colOffset = colIndex[col.key] - headerFirstIdx;
+      if (colOffset < 0 || colOffset >= rowCells.length) continue;
+      deptData[d][col.key] = parseNum(rowCells[colOffset]);
     }
   }
 
-  const totals = {
-    corn: SETTLE_DEPTS.reduce((s, d) => s + deptData[d].corn, 0),
-    sorghum: SETTLE_DEPTS.reduce((s, d) => s + deptData[d].sorghum, 0),
-    barley: SETTLE_DEPTS.reduce((s, d) => s + deptData[d].barley, 0),
-    cassava: SETTLE_DEPTS.reduce((s, d) => s + deptData[d].cassava, 0),
-    sunflower: SETTLE_DEPTS.reduce((s, d) => s + deptData[d].sunflower, 0),
-    ddgs: SETTLE_DEPTS.reduce((s, d) => s + deptData[d].ddgs, 0),
-    wheat: SETTLE_DEPTS.reduce((s, d) => s + deptData[d].wheat, 0),
-    rice: SETTLE_DEPTS.reduce((s, d) => s + deptData[d].rice, 0),
-    soybean: SETTLE_DEPTS.reduce((s, d) => s + deptData[d].soybean, 0),
-  };
+  // 计算合计
+  const totals = {};
+  COL_MAP.forEach(col => {
+    totals[col.key] = SETTLE_DEPTS.reduce((sum, d) => sum + deptData[d][col.key], 0);
+  });
 
   settleResult = { deptData, totals };
-
   renderResult();
   setStatus('ok', '✅ 解析成功！');
 }
@@ -89,7 +116,7 @@ function renderResult() {
 
   const table = document.getElementById('settleTable');
   const displayDepts = [...SETTLE_DEPTS, '合计'];
-  const colLabels = ['内贸玉米','进口高粱','进口大麦','进口木薯片','进口葵花籽粕','进口DDGS','小麦','食用稻谷','大豆'];
+  const colLabels = COL_MAP.map(c => c.name);
 
   let thead = '<thead><tr><th class="th-dept">经营部</th>';
   colLabels.forEach(l => { thead += `<th class="th-group">${l}</th>`; });
@@ -101,11 +128,7 @@ function renderResult() {
     const data = isTotal ? totals : deptData[dept];
     const trCls = isTotal ? 'tr-total' : (rowIdx % 2 === 1 ? 'tr-even' : '');
 
-    const vals = [
-      data.corn, data.sorghum, data.barley, data.cassava, data.sunflower,
-      data.ddgs, data.wheat, data.rice, data.soybean
-    ];
-
+    const vals = COL_MAP.map(col => data[col.key]);
     const rowSum = round2(vals.reduce((a, b) => a + b, 0));
 
     let tr = `<tr class="${trCls}"><td class="td-dept">${dept}</td>`;
