@@ -3,7 +3,7 @@ let settleResult = null;
 
 function parseNum(v) {
   const s = String(v || '').trim().replace(/,/g, '');
-  if (!s || s === '-') return 0;
+  if (!s || s === '-' || !/^\d+(\.\d+)?$/.test(s)) return 0;
   return parseFloat(s) || 0;
 }
 
@@ -13,6 +13,8 @@ function handleDirectSettlePaste() {
     setStatus('err', '❌ 请先粘贴数据！');
     return;
   }
+
+  text = text.replace(/  +/g, '\t').replace(/\t+/g, '\t');
 
   const deptData = {};
   SETTLE_DEPTS.forEach(d => {
@@ -24,18 +26,26 @@ function handleDirectSettlePaste() {
     if (idx < 0) continue;
 
     const subStr = text.slice(idx + d.length);
-    const parts = subStr.split(/\t/).map(p => p.trim()).filter(p => p.length > 0);
-    if (parts.length < 9) continue;
+    let cells = subStr.split(/\t/).map(p => p.trim());
 
-    deptData[d].corn      = parseNum(parts[0]);
-    deptData[d].sorghum   = parseNum(parts[1]);
-    deptData[d].barley    = parseNum(parts[2]);
-    deptData[d].cassava   = parseNum(parts[3]);
-    deptData[d].sunflower = parseNum(parts[4]);
-    deptData[d].ddgs      = parseNum(parts[5]);
-    deptData[d].wheat     = parseNum(parts[6]);
-    deptData[d].rice      = parseNum(parts[7]);
-    deptData[d].soybean   = parseNum(parts[8]);
+    const nums = [];
+    for (const c of cells) {
+      if (nums.length >= 9) break;
+      const num = parseNum(c);
+      nums.push(num);
+    }
+
+    if (nums.length >= 9) {
+      deptData[d].corn      = nums[0];
+      deptData[d].sorghum   = nums[1];
+      deptData[d].barley    = nums[2];
+      deptData[d].cassava   = nums[3];
+      deptData[d].sunflower = nums[4];
+      deptData[d].ddgs      = nums[5];
+      deptData[d].wheat     = nums[6];
+      deptData[d].rice      = nums[7];
+      deptData[d].soybean   = nums[8];
+    }
   }
 
   const totals = {
