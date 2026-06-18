@@ -18,9 +18,9 @@ function renderChart(by_dept, prevTotals, deptTotals) {
 
   const barDatasets = varieties.map(v => ({
     type: 'bar',
-    label: (CHART_COLORS[v] || {}).label || v,
+    label: v,
     data: DEPTS.map(dept => round4(by_dept[dept][v] / 10000)),
-    backgroundColor: (CHART_COLORS[v] || {}).bg || '#2563eb',
+    backgroundColor: CHART_COLORS[v] || '#2563eb',
     stack: 'stack',
     yAxisID: 'y',
     borderRadius: 2,
