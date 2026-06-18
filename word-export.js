@@ -361,10 +361,11 @@ function buildContainerWordTable(docx, data) {
 }
 
 async function exportWord() {
-  if (typeof window.docx === 'undefined') {
-    showToast('❌ docx库未加载，请检查网络连接后刷新');
-    return;
-  }
+  try {
+    if (typeof window.docx === 'undefined') {
+      showToast('❌ docx库未加载，请检查网络连接后刷新');
+      return;
+    }
 
   const {
     Document, Packer, Paragraph, TextRun,
@@ -388,6 +389,11 @@ async function exportWord() {
 
   const docChildren = [];
   let filename = '';
+  const region = document.getElementById('settleRegion')?.value
+    || document.getElementById('contractRegion')?.value
+    || document.getElementById('lastmileRegion')?.value
+    || document.getElementById('containerRegion')?.value
+    || '沿海大区';
 
   const intentEl = document.getElementById('textOutput');
   if (workbook && intentEl && intentEl.textContent.trim()) {
@@ -469,7 +475,6 @@ async function exportWord() {
   const contractEl = document.getElementById('contractTextOutput');
   if (contractWorkbook && contractEl && contractEl.textContent.trim()) {
     const cutoffDate = document.getElementById('contractCutoffDate').value;
-    const region = document.getElementById('contractRegion').value || '沿海大区';
 
     if (!filename) filename = `${region}运营周报-销售签约`;
     else filename += '-完整版';
@@ -701,6 +706,15 @@ async function exportWord() {
     }
     showToast('✅ Word文件已下载');
     updateFlowSequence(4);
+  } catch (err) {
+    console.error('Word导出错误:', err);
+    showToast('❌ 导出失败：' + err.message);
+  }
+  } catch (err) {
+    console.error('Word导出严重错误:', err);
+    showToast('❌ 导出失败：' + err.message);
+  }
+}
   } catch (err) {
     console.error('Word导出错误:', err);
     showToast('❌ 导出失败：' + err.message);
