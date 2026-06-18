@@ -8,15 +8,9 @@ function parseNum(v) {
 }
 
 function handleDirectSettlePaste() {
-  const text = document.getElementById('settlePasteArea')?.value || '';
+  let text = document.getElementById('settlePasteArea')?.value || '';
   if (!text.trim()) {
     setStatus('err', '❌ 请先粘贴数据！');
-    return;
-  }
-
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-  if (lines.length < 6) {
-    setStatus('err', '❌ 数据不够，请确保包含表头和5个经营部！');
     return;
   }
 
@@ -25,29 +19,23 @@ function handleDirectSettlePaste() {
     deptData[d] = { corn:0, sorghum:0, barley:0, cassava:0, sunflower:0, ddgs:0, wheat:0, rice:0, soybean:0 };
   });
 
-  for (let i = 1; i < lines.length; i++) {
-    const cells = lines[i].split(/\t/).map(c => c.trim());
-    if (cells.length === 0) continue;
+  for (const d of SETTLE_DEPTS) {
+    const idx = text.indexOf(d);
+    if (idx < 0) continue;
 
-    const deptName = cells[0];
-    let targetDept = null;
-    for (const d of SETTLE_DEPTS) {
-      if (deptName.includes(d)) {
-        targetDept = d;
-        break;
-      }
-    }
-    if (!targetDept) continue;
+    const subStr = text.slice(idx + d.length);
+    const parts = subStr.split(/\t/).map(p => p.trim()).filter(p => p.length > 0);
+    if (parts.length < 9) continue;
 
-    deptData[targetDept].corn      = parseNum(cells[1]);
-    deptData[targetDept].sorghum   = parseNum(cells[2]);
-    deptData[targetDept].barley    = parseNum(cells[3]);
-    deptData[targetDept].cassava   = parseNum(cells[4]);
-    deptData[targetDept].sunflower = parseNum(cells[5]);
-    deptData[targetDept].ddgs      = parseNum(cells[6]);
-    deptData[targetDept].wheat     = parseNum(cells[7]);
-    deptData[targetDept].rice      = parseNum(cells[8]);
-    deptData[targetDept].soybean   = parseNum(cells[9]);
+    deptData[d].corn      = parseNum(parts[0]);
+    deptData[d].sorghum   = parseNum(parts[1]);
+    deptData[d].barley    = parseNum(parts[2]);
+    deptData[d].cassava   = parseNum(parts[3]);
+    deptData[d].sunflower = parseNum(parts[4]);
+    deptData[d].ddgs      = parseNum(parts[5]);
+    deptData[d].wheat     = parseNum(parts[6]);
+    deptData[d].rice      = parseNum(parts[7]);
+    deptData[d].soybean   = parseNum(parts[8]);
   }
 
   const totals = {
