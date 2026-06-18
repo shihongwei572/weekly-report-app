@@ -568,10 +568,6 @@ function refreshContractOutput() {
 
      renderContractTable(detailData, totalSigned, factor, subDeptMaps);
 
-     if (settleWorkbook === null) {
-       settleWorkbook = contractWorkbook;
-       updateTabWorkbookStatus('settle', true, '销售运营台账.xlsx');
-     }
      if (lastmileWorkbook === null) {
        lastmileWorkbook = contractWorkbook;
        updateTabWorkbookStatus('lastmile', true, '销售运营台账.xlsx');

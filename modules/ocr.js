@@ -5,19 +5,18 @@ async function recognizeTableImage(imageFile) {
     throw new Error('Tesseract.js 未加载，请检查网络连接');
   }
 
-  const result = await Tesseract.recognize(
-    imageFile,
-    'chi_sim+eng',
-    {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          const percent = Math.round(m.progress * 100);
-          document.getElementById('ocrPercent').textContent = percent;
-          document.getElementById('ocrProgressBar').style.width = percent + '%';
-        }
+  const worker = await Tesseract.createWorker('chi_sim+eng', 1, {
+    logger: m => {
+      if (m.status === 'recognizing text') {
+        const percent = Math.round(m.progress * 100);
+        document.getElementById('ocrPercent').textContent = percent;
+        document.getElementById('ocrProgressBar').style.width = percent + '%';
       }
     }
-  );
+  });
+
+  const result = await worker.recognize(imageFile);
+  await worker.terminate();
 
   const text = result.data.text;
   console.log('OCR识别原始文本:', text);

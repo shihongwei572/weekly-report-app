@@ -1,13 +1,5 @@
 var settleWorkbook = null;
 
-function getSettleWorkbook() {
-  if (settleWorkbook) return settleWorkbook;
-  if (contractWorkbook) return contractWorkbook;
-  if (lastmileWorkbook) return lastmileWorkbook;
-  if (containerWorkbook) return containerWorkbook;
-  return null;
-}
-
 const SETTLE_VARIETY_MAP = getConfig('settleVarietyMap') || CONFIG.settleVarietyMap;
 
 function mapSettleVariety(rawVariety) {
@@ -16,133 +8,6 @@ function mapSettleVariety(rawVariety) {
     if (g.match.some(m => v.includes(m))) return g.key;
   }
   return null;
-}
-
-function setSettleStatus(type, msg) {
-  const el = document.getElementById('settleUploadStatus');
-  if (!el) return;
-  el.className = 'upload-status ' + (type === 'err' ? 'status-err' : 'status-ok');
-  el.textContent = msg;
-}
-
-function handleSettleDrop(e) {
-  e.preventDefault();
-  document.getElementById('settleUploadZone').classList.remove('drag');
-  const file = e.dataTransfer.files[0];
-  if (file) processSettleFile(file);
-}
-
-function handleSettleFile(e) {
-  const file = e.target.files[0];
-  if (file) processSettleFile(file);
-}
-
-function processSettleFile(file) {
-  if (!file.name.match(/\.(xlsx|xls)$/i)) {
-    setSettleStatus('err', '❌ 请上传 .xlsx 或 .xls 格式文件');
-    return;
-  }
-  setSettleStatus('ok', '⏳ 正在解析...');
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      settleWorkbook = XLSX.read(e.target.result, { type: 'array', cellDates: true });
-      setSettleStatus('ok', `✅ 已加载：${file.name}`);
-      showToast('文件解析成功，正在计算...');
-      refreshSettleOutput();
-    } catch (err) {
-      setSettleStatus('err', '❌ 解析失败：' + err.message);
-      console.error(err);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function calcSettleData() {
-  const wb = getSettleWorkbook();
-  if (!wb) return null;
-
-  if (wb.__isOCRData) {
-    return window.settleOCRData || parseSettleTableFromOCRManual();
-  }
-
-  const ws   = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
-  if (rows.length < 2) return null;
-
-  let headerRow = 0;
-  for (let i = 0; i < Math.min(10, rows.length); i++) {
-    if (rows[i] && rows[i].some(h => h && String(h).includes('经营部'))) { headerRow = i; break; }
-  }
-  const header = rows[headerRow].map(v => String(v ?? '').trim());
-  const H = {};
-  header.forEach((h, i) => { H[h] = i; });
-
-  let iDate = H['日期'] ?? H['签约日期'] ?? H['合同日期'] ?? -1;
-  if (iDate < 0) {
-    for (let i = 0; i < header.length; i++) {
-      const h = header[i];
-      if (/日期|时间/i.test(h)) { iDate = i; break; }
-    }
-  }
-  const iQty = H['26年合同量（含结转）-签约'] ?? H['合同签订量-万吨'] ?? H['签约量'] ?? H['本次发货量(吨)'] ?? -1;
-  const iVariety = H['品种'] ?? -1;
-  const iDept = H['经营部'] ?? -1;
-
-  if (iQty < 0 || iVariety < 0) {
-    showToast('❌ 找不到数量列或品种列');
-    return null;
-  }
-
-  const cutoffStr = document.getElementById('settleCutoffDate')?.value || '';
-
-  const deptData = {};
-  const DEPTS_SETTLE = ['珠三角', '粤西', '广西', '海南', '福建'];
-  DEPTS_SETTLE.forEach(d => {
-    deptData[d] = { '国产玉米': 0, '进口高粱组': 0, '小麦': 0, '稻谷': 0, '进口大豆': 0 };
-  });
-
-  let rowCount = 0;
-  const factor = iQty >= 0 && String(header[iQty]).includes('万吨') ? 10000 : 1;
-
-  for (let i = headerRow + 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row) continue;
-
-    if (cutoffStr && iDate >= 0) {
-      const dateVal = String(row[iDate] ?? '').trim().slice(0, 10);
-      if (dateVal && dateVal > cutoffStr) continue;
-    }
-
-    const qty = safeFloat(row[iQty]) * factor;
-    if (qty <= 0) continue;
-
-    const rawVariety = String(row[iVariety] ?? '').trim();
-    const groupKey   = mapSettleVariety(rawVariety);
-    if (!groupKey) continue;
-
-    let dept = null;
-    if (iDept >= 0) {
-      dept = String(row[iDept] ?? '').trim();
-    }
-    if (!dept || !DEPTS_SETTLE.includes(dept)) {
-      const salesGroup = String(row[H['销售组']] ?? row[H['部门']] ?? '').trim();
-      for (const d of DEPTS_SETTLE) {
-        if (salesGroup.includes(d) && salesGroup.includes('经营部')) { dept = d; break; }
-      }
-    }
-    if (!dept || !DEPTS_SETTLE.includes(dept)) continue;
-
-    deptData[dept][groupKey] += qty;
-    rowCount++;
-  }
-
-  const total = { '国产玉米': 0, '进口高粱组': 0, '小麦': 0, '稻谷': 0, '进口大豆': 0 };
-  DEPTS_SETTLE.forEach(d => {
-    Object.keys(total).forEach(k => { total[k] += deptData[d][k]; });
-  });
-
-  return { deptData, total, rowCount };
 }
 
 function refreshSettleOutput() {
@@ -193,21 +58,6 @@ function refreshSettleOutput() {
     document.getElementById('settleTextOutput').innerHTML = `<div class="text-para">${settleText}</div>`;
 
     renderSettleTable(deptData, total, groups, DEPTS, region, toW);
-
-    if (contractWorkbook === null && settleWorkbook) {
-      contractWorkbook = settleWorkbook;
-      updateTabWorkbookStatus('contract', true, '销售运营台账.xlsx');
-    }
-    if (lastmileWorkbook === null && settleWorkbook) {
-      lastmileWorkbook = settleWorkbook;
-      updateTabWorkbookStatus('lastmile', true, '销售运营台账.xlsx');
-    }
-    if (containerWorkbook === null && settleWorkbook) {
-      containerWorkbook = settleWorkbook;
-      updateTabWorkbookStatus('container', true, '销售运营台账.xlsx');
-      const reuseHint = document.getElementById('containerReuseHint');
-      if (reuseHint) reuseHint.style.display = '';
-    }
 
     updateFlowSequence(3);
     showToast(`✅ 计算完成，共解析 ${rowCount} 条记录`);
@@ -292,9 +142,6 @@ function copySettleText() {
 }
 
 window.settleWorkbook = settleWorkbook;
-window.handleSettleDrop = handleSettleDrop;
-window.handleSettleFile = handleSettleFile;
-window.processSettleFile = processSettleFile;
 window.calcSettleData = calcSettleData;
 window.refreshSettleOutput = refreshSettleOutput;
 window.renderSettleTable = renderSettleTable;

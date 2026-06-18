@@ -239,22 +239,6 @@
         </div>
 
         <div class="card card-upload">
-          <div class="card-title">📂 上传销售运营台账</div>
-          <div class="upload-zone" id="settleUploadZone"
-               ondragover="event.preventDefault();this.classList.add('drag')"
-               ondragleave="this.classList.remove('drag')"
-               ondrop="handleSettleDrop(event)">
-            <input type="file" id="settleFileInput" accept=".xlsx,.xls" onchange="handleSettleFile(event)" hidden />
-            <div class="upload-placeholder" onclick="document.getElementById('settleFileInput').click()">
-              <div class="upload-icon">📤</div>
-              <p>点击上传 / 拖拽文件</p>
-              <small>销售运营台账.xlsx（与合同共享）</small>
-            </div>
-          </div>
-          <div class="upload-status" id="settleUploadStatus"></div>
-        </div>
-
-        <div class="card card-upload">
           <div class="card-title">🖼️ 图片OCR识别</div>
           <div class="upload-zone" id="settleImageUploadZone"
                ondragover="event.preventDefault();this.classList.add('drag')"
@@ -282,10 +266,9 @@
         <div class="card">
           <div class="card-title">🔍 筛选说明</div>
           <div style="font-size:12px;color:var(--text-muted);line-height:1.8">
-            <div>📅 日期字段：<b>审批结束日期</b></div>
-            <div>📦 数量字段：<b>本次发货量(吨)</b></div>
-            <div>🌾 品种字段：<b>品种</b></div>
-            <div>🏢 经营部：从<b>销售组</b>自动解析</div>
+            <div>📸 上传销售结算表截图，自动OCR识别</div>
+            <div>📋 识别后可手动编辑修正数据</div>
+            <div>🌾 品种：国产玉米、进口高粱组、小麦、稻谷、进口大豆</div>
           </div>
           <button class="btn btn-sm btn-outline" style="margin-top:12px;width:100%" onclick="refreshSettleOutput()">🔄 刷新输出</button>
         </div>
