@@ -1,15 +1,17 @@
 const SETTLE_DEPTS = ['珠三角', '粤西', '广西', '福建', '海南'];
 const COL_MAP = [
-  { name: '内贸玉米', key: 'corn' },
-  { name: '进口高粱', key: 'sorghum' },
-  { name: '进口大麦', key: 'barley' },
-  { name: '进口木薯片', key: 'cassava' },
-  { name: '进口葵花籽粕', key: 'sunflower' },
-  { name: '进口DDGS', key: 'ddgs' },
-  { name: '小麦', key: 'wheat' },
-  { name: '食用稻谷', key: 'rice' },
-  { name: '大豆', key: 'soybean' }
+  { name: '内贸玉米', key: '国产玉米' },
+  { name: '进口高粱', key: '进口高粱' },
+  { name: '进口大麦', key: '进口大麦' },
+  { name: '进口木薯片', key: '进口木薯片' },
+  { name: '进口葵花籽粕', key: '进口葵花籽粕' },
+  { name: '进口DDGS', key: 'DDGS' },
+  { name: '小麦', key: '小麦' },
+  { name: '食用稻谷', key: '食用稻谷' },
+  { name: '大豆', key: '大豆' }
 ];
+
+var settleWorkbook = null;
 let settleResult = null;
 
 function parseNum(v) {
@@ -25,14 +27,12 @@ function handleDirectSettlePaste() {
     return;
   }
 
-  // 把所有换行换成制表符，然后拆分单元格
   const allCells = text.replace(/[\r\n]+/g, '\t').split(/\t/).map(c => c.trim());
   if (allCells.length < 10) {
     setStatus('err', '❌ 数据不足！');
     return;
   }
 
-  // 先找表头里每个品种的列位置
   const colIndex = {};
   for (let i = 0; i < allCells.length; i++) {
     const cell = allCells[i];
@@ -43,52 +43,47 @@ function handleDirectSettlePaste() {
     }
   }
 
-  // 检查所有列都找到了？
   if (Object.keys(colIndex).length < 9) {
     setStatus('err', '❌ 找不到对应的品种列，请检查粘贴的数据！');
     return;
   }
 
+  const headerFirstIdx = allCells.findIndex(c => c.includes('结算量') || c.includes('经营部'));
+
   const deptData = {};
   SETTLE_DEPTS.forEach(d => {
-    deptData[d] = { corn:0, sorghum:0, barley:0, cassava:0, sunflower:0, ddgs:0, wheat:0, rice:0, soybean:0 };
+    deptData[d] = {};
+    COL_MAP.forEach(c => { deptData[d][c.key] = 0; });
   });
 
-  // 找每个经营部的位置
   for (const d of SETTLE_DEPTS) {
     const deptIdx = allCells.indexOf(d);
     if (deptIdx < 0) continue;
 
-    // 计算这一行的第一个单元格到下一个经营部/合计的位置
     let nextIdx = allCells.length;
     for (const other of [...SETTLE_DEPTS, '合计']) {
       const idx = allCells.indexOf(other, deptIdx + 1);
       if (idx > deptIdx && idx < nextIdx) nextIdx = idx;
     }
 
-    // 这一行的单元格是deptIdx 到 nextIdx - 之间
     const rowCells = allCells.slice(deptIdx, nextIdx);
-    if (rowCells.length < 10) continue;
+    if (rowCells.length < 2) continue;
 
-    // 按列位置取数
     for (const col of COL_MAP) {
-      // 这个品种在表头的列索引是colIndex[col.key]
-      // 相对这一行的偏移是 colIndex[col.key] - (第一列的索引？ 哦对！哦我之前没算偏移！
-      // 表头第一个列是截止6.11结算量，索引是headerFirstIdx，所以列的偏移是 colIndex[col.key] - headerFirstIdx
-      const headerFirstIdx = allCells.findIndex(c => c.includes('结算量') || c.includes('经营部'));
       const colOffset = colIndex[col.key] - headerFirstIdx;
       if (colOffset < 0 || colOffset >= rowCells.length) continue;
       deptData[d][col.key] = parseNum(rowCells[colOffset]);
     }
   }
 
-  // 计算合计
   const totals = {};
   COL_MAP.forEach(col => {
     totals[col.key] = SETTLE_DEPTS.reduce((sum, d) => sum + deptData[d][col.key], 0);
   });
 
   settleResult = { deptData, totals };
+  settleWorkbook = { __isPasteData: true };
+
   renderResult();
   setStatus('ok', '✅ 解析成功！');
 }
@@ -103,12 +98,12 @@ function renderResult() {
 
   const totalAll = round2(Object.values(totals).reduce((a, b) => a + b, 0));
   let text = `本年累计销售结算${totalAll}万吨。`;
-  text += `其中内贸玉米${round2(totals.corn)}万吨，`;
-  text += `进口高粱${round2(totals.sorghum)}万吨，`;
-  text += `进口大麦${round2(totals.barley)}万吨，`;
-  text += `进口木薯片${round2(totals.cassava)}万吨，`;
-  text += `DDGS${round2(totals.ddgs)}万吨，`;
-  text += `小麦${round2(totals.wheat)}万吨，稻谷${round2(totals.rice)}万吨，大豆${round2(totals.soybean)}万吨。`;
+  text += `其中内贸玉米${round2(totals['国产玉米'])}万吨，`;
+  text += `进口高粱${round2(totals['进口高粱'])}万吨，`;
+  text += `进口大麦${round2(totals['进口大麦'])}万吨，`;
+  text += `进口木薯片${round2(totals['进口木薯片'])}万吨，`;
+  text += `DDGS${round2(totals['DDGS'])}万吨，`;
+  text += `小麦${round2(totals['小麦'])}万吨，稻谷${round2(totals['食用稻谷'])}万吨，大豆${round2(totals['大豆'])}万吨。`;
 
   document.getElementById('settleEmptyState').style.display = 'none';
   document.getElementById('settleResultArea').style.display = 'block';
@@ -116,7 +111,7 @@ function renderResult() {
 
   const table = document.getElementById('settleTable');
   const displayDepts = [...SETTLE_DEPTS, '合计'];
-  const colLabels = COL_MAP.map(c => c.name);
+  const colLabels = COL_MAP.map(c => c.key);
 
   let thead = '<thead><tr><th class="th-dept">经营部</th>';
   colLabels.forEach(l => { thead += `<th class="th-group">${l}</th>`; });
@@ -147,6 +142,10 @@ function renderResult() {
   showToast('✅ 生成成功！');
 }
 
+function calcSettleData() {
+  return settleResult || null;
+}
+
 function setStatus(type, msg) {
   const el = document.getElementById('settlePasteStatus');
   if (!el) return;
@@ -161,5 +160,7 @@ function copySettleText() {
   Utils.copyToClipboard(el.innerText);
 }
 
+window.settleWorkbook = settleWorkbook;
 window.handleDirectSettlePaste = handleDirectSettlePaste;
 window.copySettleText = copySettleText;
+window.calcSettleData = calcSettleData;
