@@ -361,11 +361,10 @@ function buildContainerWordTable(docx, data) {
 }
 
 async function exportWord() {
-  try {
-    if (typeof window.docx === 'undefined') {
-      showToast('❌ docx库未加载，请检查网络连接后刷新');
-      return;
-    }
+  if (typeof window.docx === 'undefined') {
+    showToast('❌ docx库未加载，请检查网络连接后刷新');
+    return;
+  }
 
   const {
     Document, Packer, Paragraph, TextRun,
@@ -706,15 +705,6 @@ async function exportWord() {
     }
     showToast('✅ Word文件已下载');
     updateFlowSequence(4);
-  } catch (err) {
-    console.error('Word导出错误:', err);
-    showToast('❌ 导出失败：' + err.message);
-  }
-  } catch (err) {
-    console.error('Word导出严重错误:', err);
-    showToast('❌ 导出失败：' + err.message);
-  }
-}
   } catch (err) {
     console.error('Word导出错误:', err);
     showToast('❌ 导出失败：' + err.message);
