@@ -1,55 +1,121 @@
 var settleWorkbook = null;
+var settleParsedData = null;
 
-const SETTLE_VARIETY_MAP = getConfig('settleVarietyMap') || CONFIG.settleVarietyMap;
+const SETTLE_COLUMNS = [
+  { key: '国产玉米',    match: ['内贸玉米', '国产玉米'] },
+  { key: '进口高粱',    match: ['进口高粱'] },
+  { key: '进口大麦',    match: ['进口大麦'] },
+  { key: '进口木薯片',  match: ['进口木薯片'] },
+  { key: '进口葵花籽粕', match: ['进口葵花籽粕'] },
+  { key: 'DDGS',       match: ['DDGS', 'ddgs'] },
+  { key: '小麦',       match: ['小麦'] },
+  { key: '食用稻谷',    match: ['食用稻谷', '稻谷'] },
+  { key: '大豆',       match: ['大豆'] },
+];
 
-function mapSettleVariety(rawVariety) {
-  const v = String(rawVariety || '');
-  for (const g of SETTLE_VARIETY_MAP) {
-    if (g.match.some(m => v.includes(m))) return g.key;
+const SETTLE_DEPTS = ['珠三角', '粤西', '广西', '福建', '海南'];
+
+function setSettleStatus(type, msg) {
+  const el = document.getElementById('settlePasteStatus');
+  if (!el) return;
+  el.className = 'upload-status ' + (type === 'err' ? 'status-err' : 'status-ok');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function matchColumn(headerText) {
+  const h = String(headerText || '').trim();
+  for (const col of SETTLE_COLUMNS) {
+    if (col.match.some(m => h.includes(m))) return col.key;
   }
   return null;
 }
 
-function refreshSettleOutput() {
-  try {
-    const result = calcSettleData();
-    if (!result) return;
+function handleSettlePaste() {
+  const text = document.getElementById('settlePasteArea')?.value || '';
+  if (!text.trim()) {
+    setSettleStatus('err', '❌ 请先粘贴结算数据');
+    return;
+  }
 
-    const { deptData, total, rowCount } = result;
-    const region  = document.getElementById('settleRegion')?.value || '沿海大区';
-    const cutoff  = document.getElementById('settleCutoffDate')?.value || '';
-    const groups  = CONFIG.contractGroups;
-    const DEPTS   = ['珠三角', '粤西', '广西', '海南', '福建'];
-    const CONTRACT_PLAN_DATA = getConfig('contractPlan') || CONFIG.contractPlan;
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length < 2) {
+    setSettleStatus('err', '❌ 数据不足，至少需要表头+1行数据');
+    return;
+  }
 
-    const toW = v => round2(v / 10000);
+  const headerCells = lines[0].split(/\t/).map(c => c.trim());
+  const colMap = [];
+  let deptIdx = -1;
 
-    const cutoffLabel = cutoff ? cutoff.replace(/^\d{4}-/, '').replace('-', '/') + '日，' : '';
-    const totalByGroup = {};
-    groups.forEach(g => { totalByGroup[g.key] = toW(total[g.key]); });
-    const totalAll = round2(Object.values(totalByGroup).reduce((s, v) => s + v, 0));
-
-    let textParts = [`截至${cutoffLabel}${region}本年累计销售结算${totalAll}万吨。`];
-
-    textParts.push(`其中内贸玉米${totalByGroup['国产玉米']}万吨，`);
-    textParts.push(`进口替代${totalByGroup['进口高粱组']}万吨`);
-    textParts.push(`；小麦${totalByGroup['小麦']}万吨，稻谷${totalByGroup['稻谷']}万吨，大豆${totalByGroup['进口大豆']}万吨。`);
-
-    const planTotal = (CONTRACT_PLAN_DATA[region] || CONTRACT_PLAN_DATA['沿海大区'] || {})['合计'] || 0;
-    if (planTotal > 0) {
-      const rate = round2(totalAll / planTotal * 100);
-      let seqRate = '';
-      if (cutoff) {
-        const seq = Utils.calcSeqRate(cutoff);
-        if (seq !== null) {
-          const diff = round2(rate - seq);
-          seqRate = `${region}年度任务完成率${rate}%（结算口径），较目前序时进度（${seq}%）${diff >= 0 ? '高' : '低'}${Math.abs(diff)}个百分点。`;
-        }
-      } else {
-        seqRate = `${region}年度任务完成率${rate}%（结算口径）。`;
-      }
-      textParts.push(seqRate);
+  headerCells.forEach((h, i) => {
+    if (h.includes('经营部') || SETTLE_DEPTS.some(d => h.includes(d))) {
+      deptIdx = i;
+    } else {
+      const matched = matchColumn(h);
+      if (matched) colMap.push({ idx: i, key: matched });
     }
+  });
+
+  if (deptIdx < 0) deptIdx = 0;
+
+  const deptData = {};
+  SETTLE_DEPTS.forEach(d => {
+    deptData[d] = {};
+    SETTLE_COLUMNS.forEach(c => { deptData[d][c.key] = 0; });
+  });
+
+  let rowCount = 0;
+
+  for (let i = 1; i < lines.length; i++) {
+    const cells = lines[i].split(/\t/).map(c => c.trim());
+    const deptName = cells[deptIdx] || '';
+
+    let matchedDept = null;
+    for (const d of SETTLE_DEPTS) {
+      if (deptName.includes(d)) { matchedDept = d; break; }
+    }
+    if (!matchedDept) continue;
+
+    colMap.forEach(cm => {
+      const val = parseFloat((cells[cm.idx] || '').replace(/,/g, '')) || 0;
+      deptData[matchedDept][cm.key] += val;
+    });
+    rowCount++;
+  }
+
+  const total = {};
+  SETTLE_COLUMNS.forEach(c => {
+    total[c.key] = SETTLE_DEPTS.reduce((s, d) => s + (deptData[d][c.key] || 0), 0);
+  });
+
+  settleParsedData = { deptData, total, rowCount };
+  settleWorkbook = { __isPasteData: true };
+
+  setSettleStatus('ok', `✅ 解析完成，共 ${rowCount} 个经营部`);
+
+  refreshSettleOutputFromPaste();
+}
+
+function refreshSettleOutputFromPaste() {
+  if (!settleParsedData) return;
+
+  try {
+    const { deptData, total, rowCount } = settleParsedData;
+    const region = document.getElementById('settleRegion')?.value || '沿海大区';
+    const toW = v => round2(v);
+
+    let totalAll = 0;
+    Object.keys(total).forEach(k => { totalAll += total[k]; });
+    totalAll = round2(totalAll);
+
+    let textParts = [`本年累计销售结算${totalAll}万吨。`];
+    textParts.push(`其中内贸玉米${toW(total['国产玉米'])}万吨，`);
+    textParts.push(`进口高粱${toW(total['进口高粱'])}万吨，`);
+    textParts.push(`进口大麦${toW(total['进口大麦'])}万吨，`);
+    textParts.push(`进口木薯片${toW(total['进口木薯片'])}万吨，`);
+    textParts.push(`DDGS${toW(total['DDGS'])}万吨，`);
+    textParts.push(`小麦${toW(total['小麦'])}万吨，稻谷${toW(total['食用稻谷'])}万吨，大豆${toW(total['大豆'])}万吨。`);
 
     const settleText = textParts.join('');
 
@@ -57,82 +123,60 @@ function refreshSettleOutput() {
     document.getElementById('settleResultArea').style.display = 'block';
     document.getElementById('settleTextOutput').innerHTML = `<div class="text-para">${settleText}</div>`;
 
-    renderSettleTable(deptData, total, groups, DEPTS, region, toW);
+    renderSettleTable(deptData, total);
 
     updateFlowSequence(3);
-    showToast(`✅ 计算完成，共解析 ${rowCount} 条记录`);
+    showToast(`✅ 计算完成，共 ${rowCount} 个经营部`);
 
   } catch (err) {
-    showToast('❌ 计算失败：' + err.message);
+    showToast('❌ 处理失败：' + err.message);
     console.error(err);
   }
 }
 
-function renderSettleTable(deptData, total, groups, depts, region, toW) {
+function renderSettleTable(deptData, total) {
   const table = document.getElementById('settleTable');
-  const displayDepts = [...depts, region];
-  const CONTRACT_PLAN_DATA = getConfig('contractPlan') || CONFIG.contractPlan;
+  const displayDepts = [...SETTLE_DEPTS, '合计'];
+  const columns = SETTLE_COLUMNS.map(c => c.key);
 
-  let tr1 = '<tr>';
-  tr1 += '<th class="th-dept" rowspan="2">经营部</th>';
-  groups.forEach(g => {
-    tr1 += `<th colspan="3" class="th-group">${g.label}</th>`;
-  });
-  tr1 += '<th colspan="3" class="th-group th-group-total">合计</th>';
-  tr1 += '</tr>';
-
-  let tr2 = '<tr>';
-  for (let i = 0; i < groups.length + 1; i++) {
-    tr2 += '<th class="th-sub th-sub-signed">结算量</th>';
-    tr2 += '<th class="th-sub th-sub-plan">计划量</th>';
-    tr2 += '<th class="th-sub th-sub-rate">完成率</th>';
-  }
-  tr2 += '</tr>';
-
-  const thead = `<thead>${tr1}${tr2}</thead>`;
+  let tr1 = '<tr><th class="th-dept">经营部</th>';
+  columns.forEach(c => { tr1 += `<th class="th-group">${c}</th>`; });
+  tr1 += '<th class="th-group th-group-total">合计</th></tr>';
+  const thead = `<thead>${tr1}</thead>`;
 
   let tbody = '<tbody>';
   displayDepts.forEach((dept, rowIdx) => {
-    const isTotal = (dept === region || dept === '沿海大区');
-    const data    = isTotal ? total : (deptData[dept] || {});
-    const planRow = CONTRACT_PLAN_DATA[dept] || CONTRACT_PLAN_DATA['沿海大区'] || {};
-    const trCls   = isTotal ? 'tr-total' : (rowIdx % 2 === 1 ? 'tr-even' : '');
+    const isTotal = (dept === '合计');
+    const data = isTotal ? total : (deptData[dept] || {});
+    const trCls = isTotal ? 'tr-total' : (rowIdx % 2 === 1 ? 'tr-even' : '');
 
-    let tr = `<tr class="${trCls}">`;
-    tr += `<td class="td-dept">${dept}</td>`;
+    let tr = `<tr class="${trCls}"><td class="td-dept">${dept}</td>`;
+    let rowSum = 0;
 
-    let totalSettle = 0;
-    let totalPlan   = 0;
-
-    groups.forEach(g => {
-      const sWan   = toW(data[g.key] || 0);
-      const pWan   = planRow[g.key] || 0;
-      const rate   = pWan > 0 ? round2(sWan / pWan * 100) : 0;
-      const rateStr = pWan > 0 ? rate + '%' : '-';
-      const rateCls = rate >= 80 ? 'rate-success' : rate >= 60 ? 'rate-warning' : (pWan > 0 ? 'rate-danger' : '');
-      totalSettle += sWan;
-      totalPlan   += pWan;
-
-      tr += `<td class="td-num">${sWan > 0 ? sWan : '-'}</td>`;
-      tr += `<td class="td-plan">${pWan > 0 ? pWan : '-'}</td>`;
-      tr += `<td class="td-rate ${rateCls}">${rateStr}</td>`;
+    columns.forEach(c => {
+      const val = toW(data[c] || 0);
+      rowSum += val;
+      tr += `<td class="td-num">${val > 0 ? val : '-'}</td>`;
     });
 
-    totalSettle = round2(totalSettle);
-    totalPlan   = round2(totalPlan);
-    const tRate    = totalPlan > 0 ? round2(totalSettle / totalPlan * 100) : 0;
-    const tRateStr = totalPlan > 0 ? tRate + '%' : '-';
-    const tRateCls = tRate >= 80 ? 'rate-success' : tRate >= 60 ? 'rate-warning' : (totalPlan > 0 ? 'rate-danger' : '');
-
-    tr += `<td class="td-num">${totalSettle > 0 ? totalSettle : '-'}</td>`;
-    tr += `<td class="td-plan">${totalPlan > 0 ? totalPlan : '-'}</td>`;
-    tr += `<td class="td-rate ${tRateCls}">${tRateStr}</td>`;
+    rowSum = round2(rowSum);
+    tr += `<td class="td-num td-total">${rowSum > 0 ? rowSum : '-'}</td>`;
     tr += '</tr>';
     tbody += tr;
   });
   tbody += '</tbody>';
 
   table.innerHTML = thead + tbody;
+}
+
+function toW(v) { return round2(v); }
+
+function calcSettleData() {
+  return settleParsedData || null;
+}
+
+function refreshSettleOutput() {
+  refreshSettleOutputFromPaste();
 }
 
 function copySettleText() {
@@ -142,8 +186,8 @@ function copySettleText() {
 }
 
 window.settleWorkbook = settleWorkbook;
-window.calcSettleData = calcSettleData;
+window.handleSettlePaste = handleSettlePaste;
 window.refreshSettleOutput = refreshSettleOutput;
 window.renderSettleTable = renderSettleTable;
 window.copySettleText = copySettleText;
-window.mapSettleVariety = mapSettleVariety;
+window.calcSettleData = calcSettleData;

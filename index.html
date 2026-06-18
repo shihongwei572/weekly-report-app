@@ -6,8 +6,6 @@
   <title>沿海大区运营周报生成</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <!-- Tesseract.js OCR 识别库 -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <!-- docx.js 用于生成真实 Word 文件（本地版本，挂载到 window.docx） -->
   <script src="docx.min.js"></script>
   <!-- FileSaver.js 用于触发下载（本地版本） -->
@@ -239,36 +237,22 @@
         </div>
 
         <div class="card card-upload">
-          <div class="card-title">🖼️ 图片OCR识别</div>
-          <div class="upload-zone" id="settleImageUploadZone"
-               ondragover="event.preventDefault();this.classList.add('drag')"
-               ondragleave="this.classList.remove('drag')"
-               ondrop="handleSettleImageDrop(event)">
-            <input type="file" id="settleImageInput" accept="image/*" onchange="handleSettleImageFile(event)" hidden />
-            <div class="upload-placeholder" onclick="document.getElementById('settleImageInput').click()">
-              <div class="upload-icon">🖼️</div>
-              <p>点击上传表格图片</p>
-              <small>支持 jpg、png、bmp 等格式</small>
-            </div>
+          <div class="card-title">📋 粘贴结算数据</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.6">
+            从Excel复制结算表（含表头），粘贴到下方文本框：
           </div>
-          <div class="upload-status" id="settleImageUploadStatus"></div>
-          <!-- OCR进度条 -->
-          <div id="ocrProgress" style="display:none;margin-top:12px;">
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">
-              🔍 正在识别图片... <span id="ocrPercent">0</span>%
-            </div>
-            <div style="width:100%;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
-              <div id="ocrProgressBar" style="width:0%;height:100%;background:var(--primary);transition:width 0.3s;"></div>
-            </div>
-          </div>
+          <textarea id="settlePasteArea" placeholder="在此粘贴结算数据，例如：&#10;截止6.11结算量	内贸玉米	进口高粱	进口大麦	...&#10;珠三角	79.04	6.31	9.11	...&#10;粤西	63.47	5.74	7.69	..."
+            style="width:100%;height:180px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:12px;resize:vertical;white-space:pre;"></textarea>
+          <button class="btn btn-sm btn-primary" style="margin-top:8px;width:100%" onclick="handleSettlePaste()">📊 解析并计算</button>
+          <div class="upload-status" id="settlePasteStatus"></div>
         </div>
 
         <div class="card">
           <div class="card-title">🔍 筛选说明</div>
           <div style="font-size:12px;color:var(--text-muted);line-height:1.8">
-            <div>📸 上传销售结算表截图，自动OCR识别</div>
-            <div>📋 识别后可手动编辑修正数据</div>
-            <div>🌾 品种：国产玉米、进口高粱组、小麦、稻谷、进口大豆</div>
+            <div>📋 从Excel复制结算表（含表头），粘贴到文本框</div>
+            <div>🌾 品种：国产玉米、进口高粱、进口大麦、进口木薯片等</div>
+            <div>🏢 经营部：珠三角、粤西、广西、福建、海南</div>
           </div>
           <button class="btn btn-sm btn-outline" style="margin-top:12px;width:100%" onclick="refreshSettleOutput()">🔄 刷新输出</button>
         </div>
@@ -584,7 +568,6 @@
 <script src="chart.js"></script>
 <script src="modules/contract.js"></script>
 <script src="modules/settle.js"></script>
-<script src="modules/ocr.js"></script>
 <script src="modules/lastmile.js"></script>
 <script src="modules/container.js"></script>
 <script src="word-export.js"></script>

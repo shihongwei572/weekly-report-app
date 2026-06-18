@@ -151,21 +151,14 @@ function buildContractWordTable(docx, detailData, totalSigned, factor) {
 
 function buildSettleWordTable(docx, data) {
   const { Table, TableRow, TableCell, TextRun, Paragraph, AlignmentType, BorderStyle, WidthType, VerticalAlign } = docx;
-  const subDepts = ['珠三角', '粤西', '广西', '海南', '福建'];
-  const displayDepts = [...subDepts, '沿海大区'];
-  const groups = CONTRACT_TABLE_GROUPS;
-  const CONTRACT_PLAN_DATA = getConfig('contractPlan') || CONFIG.contractPlan;
+  const displayDepts = ['珠三角', '粤西', '广西', '福建', '海南', '合计'];
+  const columns = ['国产玉米', '进口高粱', '进口大麦', '进口木薯片', '进口葵花籽粕', 'DDGS', '小麦', '食用稻谷', '大豆'];
 
   const C = {
     H_BG: '1E40AF', H_FG: 'FFFFFF',
-    SUB_SIGNED: '1E3A8A', SUB_PLAN: '2563EB', SUB_RATE: '3B82F6',
     DEPT_BG: 'DBEAFE', DEPT_FG: '1E40AF',
     ODD: 'FFFFFF', EVEN: 'EFF6FF',
-    PLAN_CELL: 'F0F9FF', PLAN_FG: '1E40AF',
-    RATE_CELL: 'F0F9FF',
     TOTAL_BG: 'BFDBFE', TOTAL_FG: '1E40AF',
-    TOTAL_PLAN: 'BFDBFE', TOTAL_RATE: 'BFDBFE',
-    RED: 'DC2626', ORANGE: 'D97706', GREEN: '059669',
   };
 
   const thin = (color = 'CBD5E1') => ({ style: BorderStyle.SINGLE, size: 4, color });
@@ -173,15 +166,13 @@ function buildSettleWordTable(docx, data) {
 
   function makeCell(text, opts = {}) {
     const {
-      bold = false, colSpan = 1, rowSpan = 1,
+      bold = false, colSpan = 1,
       align = AlignmentType.CENTER,
       bg = 'FFFFFF', fg = '1A1A1A',
       size = 18, borders = b(),
-      vAlign,
     } = opts;
-    const cellProps = { borders, shading: { fill: bg }, verticalAlign: vAlign || VerticalAlign.CENTER };
+    const cellProps = { borders, shading: { fill: bg }, verticalAlign: VerticalAlign.CENTER };
     if (colSpan > 1) cellProps.columnSpan = colSpan;
-    if (rowSpan > 1) cellProps.rowSpan = rowSpan;
     return new TableCell({
       ...cellProps,
       children: [new Paragraph({
@@ -192,71 +183,39 @@ function buildSettleWordTable(docx, data) {
     });
   }
 
-  const row1Cells = [makeCell('经营部', { bold: true, rowSpan: 2, bg: C.H_BG, fg: C.H_FG, size: 18 })];
-  groups.forEach(g => {
-    row1Cells.push(makeCell(g.label, { bold: true, colSpan: 3, bg: C.H_BG, fg: C.H_FG, size: 18 }));
+  const headerCells = [makeCell('经营部', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 18 })];
+  columns.forEach(c => {
+    headerCells.push(makeCell(c, { bold: true, bg: C.H_BG, fg: C.H_FG, size: 16 }));
   });
-  row1Cells.push(makeCell('合计', { bold: true, colSpan: 3, bg: C.H_BG, fg: C.H_FG, size: 18 }));
-  const headerRow1 = new TableRow({ children: row1Cells, tableHeader: true });
-
-  const row2Cells = [];
-  const colCount = groups.length + 1;
-  for (let i = 0; i < colCount; i++) {
-    row2Cells.push(makeCell('结算量', { bold: true, bg: C.SUB_SIGNED, fg: C.H_FG, size: 16 }));
-    row2Cells.push(makeCell('计划量', { bold: true, bg: C.SUB_PLAN, fg: C.H_FG, size: 16 }));
-    row2Cells.push(makeCell('完成率', { bold: true, bg: C.SUB_RATE, fg: C.H_FG, size: 16 }));
-  }
-  const headerRow2 = new TableRow({ children: row2Cells, tableHeader: true });
+  headerCells.push(makeCell('合计', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 18 }));
+  const headerRow = new TableRow({ children: headerCells, tableHeader: true });
 
   const { deptData, total } = data;
   const dataRows = displayDepts.map((dept, rowIdx) => {
-    const isTotal = dept === '沿海大区';
+    const isTotal = dept === '合计';
     const rowBg = isTotal ? C.TOTAL_BG : (rowIdx % 2 === 0 ? C.ODD : C.EVEN);
-    const deptFg = isTotal ? C.TOTAL_FG : C.DEPT_FG;
     const dataRow = isTotal ? total : (deptData[dept] || {});
-    const planRow = CONTRACT_PLAN_DATA[dept] || CONTRACT_PLAN_DATA['沿海大区'] || {};
 
-    const cells = [makeCell(dept, { bold: true, bg: isTotal ? C.TOTAL_BG : C.DEPT_BG, fg: deptFg, size: 18 })];
+    const cells = [makeCell(dept, { bold: true, bg: isTotal ? C.TOTAL_BG : C.DEPT_BG, fg: isTotal ? C.TOTAL_FG : C.DEPT_FG, size: 18 })];
 
-    let totalSettle = 0;
-    let totalPlanVal = 0;
-
-    groups.forEach(g => {
-      const sWan = round2((dataRow[g.key] || 0) / 10000);
-      const pWan = planRow[g.key] || 0;
-      const rateVal = pWan > 0 ? round2(sWan / pWan * 100) : 0;
-      const rateStr = pWan > 0 ? rateVal + '%' : '-';
-      const rateFg = rateVal >= 80 ? C.GREEN : rateVal >= 60 ? C.ORANGE : C.RED;
-      totalSettle += sWan;
-      totalPlanVal += pWan;
-
-      cells.push(makeCell(sWan > 0 ? sWan : '-', { bold: isTotal, align: AlignmentType.RIGHT, bg: rowBg, fg: isTotal ? C.TOTAL_FG : '1E40AF', size: 18 }));
-      cells.push(makeCell(pWan > 0 ? pWan : '-', { bold: isTotal, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_PLAN : C.PLAN_CELL, fg: C.PLAN_FG, size: 18 }));
-      cells.push(makeCell(rateStr, { bold: true, align: AlignmentType.CENTER, bg: isTotal ? C.TOTAL_RATE : C.RATE_CELL, fg: isTotal ? '14532D' : rateFg, size: 18 }));
+    let rowSum = 0;
+    columns.forEach(c => {
+      const val = round2(dataRow[c] || 0);
+      rowSum += val;
+      cells.push(makeCell(val > 0 ? val : '-', { bold: isTotal, align: AlignmentType.RIGHT, bg: rowBg, size: 18 }));
     });
 
-    totalSettle = round2(totalSettle);
-    totalPlanVal = round2(totalPlanVal);
-    const tRate = totalPlanVal > 0 ? round2(totalSettle / totalPlanVal * 100) : 0;
-    const tRateStr = totalPlanVal > 0 ? tRate + '%' : '-';
-    const tRateFg = tRate >= 80 ? C.GREEN : tRate >= 60 ? C.ORANGE : C.RED;
-
-    cells.push(makeCell(totalSettle > 0 ? totalSettle : '-', { bold: true, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_BG : rowBg, fg: isTotal ? C.TOTAL_FG : 'C0392B', size: 18 }));
-    cells.push(makeCell(totalPlanVal > 0 ? totalPlanVal : '-', { bold: true, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_PLAN : C.PLAN_CELL, fg: C.PLAN_FG, size: 18 }));
-    cells.push(makeCell(tRateStr, { bold: true, align: AlignmentType.CENTER, bg: isTotal ? C.TOTAL_RATE : C.RATE_CELL, fg: isTotal ? '14532D' : tRateFg, size: 18 }));
+    rowSum = round2(rowSum);
+    cells.push(makeCell(rowSum > 0 ? rowSum : '-', { bold: true, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_BG : rowBg, fg: isTotal ? C.TOTAL_FG : 'C0392B', size: 18 }));
 
     return new TableRow({ children: cells });
   });
 
-  const totalCols = 1 + groups.length * 3 + 3;
-  const columnWidths = [1100];
-  for (let i = 0; i < groups.length; i++) {
-    columnWidths.push(750, 700, 750);
-  }
-  columnWidths.push(800, 750, 800);
+  const totalCols = 1 + columns.length + 1;
+  const columnWidths = [1100, ...Array(totalCols - 2).fill(700), 800];
 
   return new Table({
-    rows: [headerRow1, headerRow2, ...dataRows],
+    rows: [headerRow, ...dataRows],
     width: { size: 100, type: WidthType.PERCENTAGE },
     columnWidths,
   });
