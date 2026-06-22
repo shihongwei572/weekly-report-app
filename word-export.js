@@ -52,7 +52,7 @@ function buildContractWordTable(docx, detailData, totalSigned, factor) {
       bold = false, colSpan = 1, rowSpan = 1,
       align = AlignmentType.CENTER,
       bg = 'FFFFFF', fg = '1A1A1A',
-      size = 18, borders = b(),
+      size = 20, borders = b(),
       vAlign,
     } = opts;
     const cellProps = { borders, shading: { fill: bg }, verticalAlign: vAlign || VerticalAlign.CENTER };
@@ -63,24 +63,24 @@ function buildContractWordTable(docx, detailData, totalSigned, factor) {
       children: [new Paragraph({
         children: [new TextRun({ text: String(text), bold, size, font: { name: '宋体' }, color: fg })],
         alignment: align,
-        spacing: { before: 30, after: 30 },
+        spacing: { before: 80, after: 80 },
       })],
     });
   }
 
-  const row1Cells = [makeCell('经营部', { bold: true, rowSpan: 2, bg: C.H_BG, fg: C.H_FG, size: 18, vAlign: VerticalAlign.CENTER })];
+  const row1Cells = [makeCell('经营部', { bold: true, rowSpan: 2, bg: C.H_BG, fg: C.H_FG, size: 20, vAlign: VerticalAlign.CENTER })];
   groups.forEach(g => {
-    row1Cells.push(makeCell(g.label, { bold: true, colSpan: 3, bg: C.H_BG, fg: C.H_FG, size: 18 }));
+    row1Cells.push(makeCell(g.label, { bold: true, colSpan: 3, bg: C.H_BG, fg: C.H_FG, size: 20 }));
   });
-  row1Cells.push(makeCell('合计', { bold: true, colSpan: 3, bg: C.H_BG, fg: C.H_FG, size: 18 }));
+  row1Cells.push(makeCell('合计', { bold: true, colSpan: 3, bg: C.H_BG, fg: C.H_FG, size: 20 }));
   const headerRow1 = new TableRow({ children: row1Cells, tableHeader: true });
 
   const row2Cells = [];
   const colCount = groups.length + 1;
   for (let i = 0; i < colCount; i++) {
-    row2Cells.push(makeCell('签约量', { bold: true, bg: C.SUB_SIGN, fg: C.H_FG, size: 16 }));
-    row2Cells.push(makeCell('计划量', { bold: true, bg: C.SUB_PLAN, fg: C.H_FG, size: 16 }));
-    row2Cells.push(makeCell('完成率', { bold: true, bg: C.SUB_RATE, fg: C.H_FG, size: 16 }));
+    row2Cells.push(makeCell('签约量', { bold: true, bg: C.SUB_SIGN, fg: C.H_FG, size: 18 }));
+    row2Cells.push(makeCell('计划量', { bold: true, bg: C.SUB_PLAN, fg: C.H_FG, size: 18 }));
+    row2Cells.push(makeCell('完成率', { bold: true, bg: C.SUB_RATE, fg: C.H_FG, size: 18 }));
   }
   const headerRow2 = new TableRow({ children: row2Cells, tableHeader: true });
 
@@ -115,9 +115,9 @@ function buildContractWordTable(docx, detailData, totalSigned, factor) {
       const rateFg  = rateVal >= 80 ? C.GREEN : rateVal >= 60 ? C.ORANGE : C.RED;
       totalSignedRaw += sRaw;
 
-      cells.push(makeCell(sWan > 0 ? round2(sWan) : '-', { bold: isTotal, align: AlignmentType.RIGHT, bg: rowBg, fg: isTotal ? C.TOTAL_FG : '1E40AF', size: 18 }));
-      cells.push(makeCell(pWan > 0 ? pWan : '-', { bold: isTotal, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_PLAN : C.PLAN_CELL, fg: C.PLAN_FG, size: 18 }));
-      cells.push(makeCell(rateStr, { bold: true, align: AlignmentType.CENTER, bg: isTotal ? C.TOTAL_RATE : C.RATE_CELL, fg: isTotal ? '14532D' : rateFg, size: 18 }));
+      cells.push(makeCell(sWan > 0 ? round2(sWan) : '-', { bold: isTotal, align: AlignmentType.RIGHT, bg: rowBg, fg: isTotal ? C.TOTAL_FG : '1E40AF', size: 20 }));
+      cells.push(makeCell(pWan > 0 ? pWan : '-', { bold: isTotal, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_PLAN : C.PLAN_CELL, fg: C.PLAN_FG, size: 20 }));
+      cells.push(makeCell(rateStr, { bold: true, align: AlignmentType.CENTER, bg: isTotal ? C.TOTAL_RATE : C.RATE_CELL, fg: isTotal ? '14532D' : rateFg, size: 20 }));
     });
 
     const tSignedWan = totalSignedRaw / factor;
@@ -126,9 +126,9 @@ function buildContractWordTable(docx, detailData, totalSigned, factor) {
     const tRateStr   = tPlanWan > 0 ? round2(tRate) + '%' : '-';
     const tRateFg    = tRate >= 80 ? C.GREEN : tRate >= 60 ? C.ORANGE : C.RED;
 
-    cells.push(makeCell(round2(tSignedWan), { bold: true, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_BG : rowBg, fg: isTotal ? C.TOTAL_FG : 'C0392B', size: 18 }));
-    cells.push(makeCell(tPlanWan > 0 ? tPlanWan : '-', { bold: true, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_PLAN : C.PLAN_CELL, fg: C.PLAN_FG, size: 18 }));
-    cells.push(makeCell(tRateStr, { bold: true, align: AlignmentType.CENTER, bg: isTotal ? C.TOTAL_RATE : C.RATE_CELL, fg: isTotal ? '14532D' : tRateFg, size: 18 }));
+    cells.push(makeCell(round2(tSignedWan), { bold: true, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_BG : rowBg, fg: isTotal ? C.TOTAL_FG : 'C0392B', size: 20 }));
+    cells.push(makeCell(tPlanWan > 0 ? tPlanWan : '-', { bold: true, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_PLAN : C.PLAN_CELL, fg: C.PLAN_FG, size: 20 }));
+    cells.push(makeCell(tRateStr, { bold: true, align: AlignmentType.CENTER, bg: isTotal ? C.TOTAL_RATE : C.RATE_CELL, fg: isTotal ? '14532D' : tRateFg, size: 20 }));
 
     return new TableRow({ children: cells });
   });
@@ -136,11 +136,11 @@ function buildContractWordTable(docx, detailData, totalSigned, factor) {
   const totalCols = 1 + groups.length * 3 + 3;
   const pageWidthDxa = 14400;
   
-  const columnWidths = [1100];
+  const columnWidths = [1200];
   for (let i = 0; i < groups.length; i++) {
-    columnWidths.push(750, 700, 750);
+    columnWidths.push(850, 800, 850);
   }
-  columnWidths.push(800, 750, 800);
+  columnWidths.push(900, 850, 900);
 
   return new Table({
     rows: [headerRow1, headerRow2, ...dataRows],
@@ -169,7 +169,7 @@ function buildSettleWordTable(docx, data) {
       bold = false, colSpan = 1,
       align = AlignmentType.CENTER,
       bg = 'FFFFFF', fg = '1A1A1A',
-      size = 18, borders = b(),
+      size = 20, borders = b(),
     } = opts;
     const cellProps = { borders, shading: { fill: bg }, verticalAlign: VerticalAlign.CENTER };
     if (colSpan > 1) cellProps.columnSpan = colSpan;
@@ -178,16 +178,16 @@ function buildSettleWordTable(docx, data) {
       children: [new Paragraph({
         children: [new TextRun({ text: String(text), bold, size, font: { name: '宋体' }, color: fg })],
         alignment: align,
-        spacing: { before: 60, after: 60 },
+        spacing: { before: 80, after: 80 },
       })],
     });
   }
 
-  const headerCells = [makeCell('经营部', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 18 })];
+  const headerCells = [makeCell('经营部', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 })];
   columns.forEach(c => {
-    headerCells.push(makeCell(c, { bold: true, bg: C.H_BG, fg: C.H_FG, size: 16 }));
+    headerCells.push(makeCell(c, { bold: true, bg: C.H_BG, fg: C.H_FG, size: 18 }));
   });
-  headerCells.push(makeCell('合计', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 18 }));
+  headerCells.push(makeCell('合计', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 }));
   const headerRow = new TableRow({ children: headerCells, tableHeader: true });
 
   const { deptData, total } = data;
@@ -196,17 +196,17 @@ function buildSettleWordTable(docx, data) {
     const rowBg = isTotal ? C.TOTAL_BG : (rowIdx % 2 === 0 ? C.ODD : C.EVEN);
     const dataRow = isTotal ? total : (deptData[dept] || {});
 
-    const cells = [makeCell(dept, { bold: true, bg: isTotal ? C.TOTAL_BG : C.DEPT_BG, fg: isTotal ? C.TOTAL_FG : C.DEPT_FG, size: 18 })];
+    const cells = [makeCell(dept, { bold: true, bg: isTotal ? C.TOTAL_BG : C.DEPT_BG, fg: isTotal ? C.TOTAL_FG : C.DEPT_FG, size: 20 })];
 
     let rowSum = 0;
     columns.forEach(c => {
       const val = round2(dataRow[c] || 0);
       rowSum += val;
-      cells.push(makeCell(val > 0 ? val : '-', { bold: isTotal, align: AlignmentType.RIGHT, bg: rowBg, size: 18 }));
+      cells.push(makeCell(val > 0 ? val : '-', { bold: isTotal, align: AlignmentType.RIGHT, bg: rowBg, size: 20 }));
     });
 
     rowSum = round2(rowSum);
-    cells.push(makeCell(rowSum > 0 ? rowSum : '-', { bold: true, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_BG : rowBg, fg: isTotal ? C.TOTAL_FG : 'C0392B', size: 18 }));
+    cells.push(makeCell(rowSum > 0 ? rowSum : '-', { bold: true, align: AlignmentType.RIGHT, bg: isTotal ? C.TOTAL_BG : rowBg, fg: isTotal ? C.TOTAL_FG : 'C0392B', size: 20 }));
 
     return new TableRow({ children: cells });
   });
@@ -240,7 +240,7 @@ function buildLastmileWordTable(docx, data) {
       bold = false,
       align = AlignmentType.CENTER,
       bg = 'FFFFFF', fg = '1A1A1A',
-      size = 18, borders = b(),
+      size = 20, borders = b(),
       vAlign,
     } = opts;
     const cellProps = { borders, shading: { fill: bg }, verticalAlign: vAlign || VerticalAlign.CENTER };
@@ -249,16 +249,16 @@ function buildLastmileWordTable(docx, data) {
       children: [new Paragraph({
         children: [new TextRun({ text: String(text), bold, size, font: { name: '宋体' }, color: fg })],
         alignment: align,
-        spacing: { before: 30, after: 30 },
+        spacing: { before: 80, after: 80 },
       })],
     });
   }
 
   const headerCells = [
-    makeCell('经营部', { bold: true, bg: C.H_BG, fg: C.H_FG }),
-    makeCell('预算指标', { bold: true, bg: C.H_BG, fg: C.H_FG }),
-    makeCell('最后一公里签约(万吨)', { bold: true, bg: C.H_BG, fg: C.H_FG }),
-    makeCell('占比', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+    makeCell('经营部', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 }),
+    makeCell('预算指标', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 }),
+    makeCell('最后一公里签约(万吨)', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 }),
+    makeCell('占比', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 }),
   ];
   const headerRow = new TableRow({ children: headerCells, tableHeader: true });
 
@@ -309,7 +309,7 @@ function buildContainerWordTable(docx, data) {
       bold = false,
       align = AlignmentType.CENTER,
       bg = 'FFFFFF', fg = '1A1A1A',
-      size = 18, borders = b(),
+      size = 20, borders = b(),
       vAlign,
     } = opts;
     const cellProps = { borders, shading: { fill: bg }, verticalAlign: vAlign || VerticalAlign.CENTER };
@@ -318,16 +318,16 @@ function buildContainerWordTable(docx, data) {
       children: [new Paragraph({
         children: [new TextRun({ text: String(text), bold, size, font: { name: '宋体' }, color: fg })],
         alignment: align,
-        spacing: { before: 30, after: 30 },
+        spacing: { before: 80, after: 80 },
       })],
     });
   }
 
   const headerCells = [
-    makeCell('经营部', { bold: true, bg: C.H_BG, fg: C.H_FG }),
-    makeCell('预算指标', { bold: true, bg: C.H_BG, fg: C.H_FG }),
-    makeCell('销售签约量(万吨)', { bold: true, bg: C.H_BG, fg: C.H_FG }),
-    makeCell('完成率', { bold: true, bg: C.H_BG, fg: C.H_FG }),
+    makeCell('经营部', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 }),
+    makeCell('预算指标', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 }),
+    makeCell('销售签约量(万吨)', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 }),
+    makeCell('完成率', { bold: true, bg: C.H_BG, fg: C.H_FG, size: 20 }),
   ];
   const headerRow = new TableRow({ children: headerCells, tableHeader: true });
 
@@ -346,10 +346,10 @@ function buildContainerWordTable(docx, data) {
     const rateFg = rate >= 80 ? C.GREEN : rate >= 60 ? C.ORANGE : C.RED;
 
     return new TableRow({ children: [
-      makeCell(dept, { bold: true, bg: isTotal ? C.TOTAL_BG : 'DBEAFE', fg: isTotal ? C.TOTAL_FG : '1E40AF' }),
-      makeCell(plan > 0 ? plan : '-', { bg: rowBg, fg: '475569' }),
-      makeCell(total > 0 ? total : '-', { align: AlignmentType.RIGHT, bg: rowBg, fg: '1E40AF' }),
-      makeCell(rateStr, { bold: true, bg: rowBg, fg: isTotal ? '14532D' : rateFg }),
+      makeCell(dept, { bold: true, bg: isTotal ? C.TOTAL_BG : 'DBEAFE', fg: isTotal ? C.TOTAL_FG : '1E40AF', size: 20 }),
+      makeCell(plan > 0 ? plan : '-', { bg: rowBg, fg: '475569', size: 20 }),
+      makeCell(total > 0 ? total : '-', { align: AlignmentType.RIGHT, bg: rowBg, fg: '1E40AF', size: 20 }),
+      makeCell(rateStr, { bold: true, bg: rowBg, fg: isTotal ? '14532D' : rateFg, size: 20 }),
     ]});
   });
 
