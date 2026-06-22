@@ -39,6 +39,7 @@
     <button class="tab-btn" data-tab="settle" onclick="switchTab('settle')">🚚 销售结算</button>
     <button class="tab-btn" data-tab="lastmile" onclick="switchTab('lastmile')">📍 最后一公里</button>
     <button class="tab-btn" data-tab="container" onclick="switchTab('container')">📦 集装箱玉米</button>
+    <button class="tab-btn" data-tab="port" onclick="switchTab('port')">🚢 港口库存</button>
   </div>
 
   <div class="layout">
@@ -373,6 +374,48 @@
         </div>
       </div>
 
+      <!-- ===== 港口库存模块（默认隐藏）===== -->
+      <div id="tab-port-sidebar" style="display:none">
+        <div class="card">
+          <div class="card-title">⚙️ 港口库存配置</div>
+          <div class="form-row">
+            <label>数据截止日期</label>
+            <input type="date" id="portCutoffDate" value="2026-06-19" />
+          </div>
+          <div class="form-row">
+            <label>大区名称</label>
+            <select id="portRegion" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="沿海大区" selected>沿海大区</option>
+              <option value="珠三角">珠三角</option>
+              <option value="粤西">粤西</option>
+              <option value="广西">广西</option>
+              <option value="福建">福建</option>
+              <option value="海南">海南</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card card-upload">
+          <div class="card-title">📂 上传沿海饲料原料数据核对</div>
+          <div class="upload-zone" id="portUploadZone"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="handlePortDrop(event)">
+            <input type="file" id="portFileInput" accept=".xlsx,.xls" onchange="handlePortFile(event)" hidden />
+            <div class="upload-placeholder" onclick="document.getElementById('portFileInput').click()">
+              <div class="upload-icon">📤</div>
+              <p>点击上传 / 拖拽文件</p>
+              <small>3-沿海饲料原料数据核对-*.xlsx</small>
+            </div>
+          </div>
+          <div class="upload-status" id="portUploadStatus"></div>
+        </div>
+
+        <div class="card">
+          <button class="btn btn-sm btn-outline" style="width:100%" onclick="refreshPortOutput()">🔄 刷新输出</button>
+        </div>
+      </div>
+
     </aside>
 
     <!-- ===== 右侧：结果 ===== -->
@@ -547,6 +590,32 @@
         </div>
       </div>
 
+      <!-- ===== 港口库存结果 ===== -->
+      <div id="tab-port-content" style="display:none">
+        <div class="empty-state" id="portEmptyState">
+          <div class="empty-icon">📁</div>
+          <p>请在左侧上传「3-沿海饲料原料数据核对-*.xlsx」</p>
+          <small>上传后自动计算港口库存及可用天数</small>
+        </div>
+        <div id="portResultArea" style="display:none">
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📝 港口库存文字</h2>
+              <button class="btn btn-sm btn-outline" onclick="copyPortText()">复制</button>
+            </div>
+            <div class="text-output" id="portTextOutput"></div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📊 港口库存明细</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="portTable"></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -563,6 +632,7 @@
 <script src="modules/settle.js"></script>
 <script src="modules/lastmile.js"></script>
 <script src="modules/container.js"></script>
+<script src="modules/port.js"></script>
 <script src="word-export.js"></script>
 <script src="app.js"></script>
 </body>
