@@ -149,6 +149,9 @@ function calcPortData() {
 
   var days4 = socialCornDailyRate > 0 ? round2(socialCornStock / socialCornDailyRate) : 0;
   var diff = round2(days3 - days4);
+  var daysDiff = round2(days1 - days2);
+  var daysDiffStr = daysDiff >= 0 ? '+' + daysDiff : '' + daysDiff;
+  var daysCompare = daysDiff >= 0 ? '高' + daysDiffStr + '天' : '低' + daysDiffStr.replace('-', '') + '天';
 
   var dateObj = new Date(latestDate + 'T00:00:00');
   var dateStr = (dateObj.getMonth() + 1) + '月' + dateObj.getDate() + '日';
@@ -161,7 +164,7 @@ function calcPortData() {
   var text = '截至' + dateStr + '，沿海社会散粮港存' + val1 + '万吨（环比' + change1Str + '%），' +
     '我司散粮库存占社会港存比例' + ratio + '％。' +
     '按当前走货速度测算，我司整体散粮港存预计可用' + days1 + '天（环比' + change2Str + '天），' +
-    '与社会整体散粮港存可用天数（' + days2 + '天）持平，' +
+    '较社会整体散粮港存可用天数（' + days2 + '天）' + daysCompare + '，' +
     '其中内贸玉米港存预计可用' + days3 + '天（环比' + change3Str + '天），' +
     '较社会内贸玉米港存可用天数（' + days4 + '天）高' + diffStr + '天。';
 
