@@ -121,7 +121,7 @@ function renderChart(by_dept, prevTotals, deptTotals) {
         const isOutlier = v > y2Max || v < y2Min;
 
         c.save();
-        c.fillStyle = isOutlier ? '#dc2626' : '#1e40af';
+        c.fillStyle = isOutlier ? '#dc2626' : '#1a202c';
         c.font = `bold 11px "Microsoft YaHei", sans-serif`;
         c.textAlign = 'center';
         c.textBaseline = 'bottom';
