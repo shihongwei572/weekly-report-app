@@ -156,11 +156,41 @@ function handleDeductionParse() {
     perTonPart += '（环比' + (changePerTon >= 0 ? '增加' : '减少') + Math.abs(changePerTon) + '元/吨）';
   }
 
-  var top4 = reasons.slice(0, 4);
+  var QUALITY_REASONS = ['杂质', '水分', '毒素', '霉变', '热损伤', '不完善粒', '容重', '短重'];
+  var totalAmount = reasons.reduce(function(s, r) { return s + r.amount; }, 0);
+  var qualityAmount = 0;
+  var otherAmount = 0;
+  for (var i = 0; i < reasons.length; i++) {
+    if (QUALITY_REASONS.indexOf(reasons[i].name) >= 0) {
+      qualityAmount += reasons[i].amount;
+    } else {
+      otherAmount += reasons[i].amount;
+    }
+  }
+  var qualityRatio = totalAmount > 0 ? qualityAmount / totalAmount : 0;
+
+  var qualityDesc;
+  if (qualityRatio >= 0.95) {
+    qualityDesc = '均为品质不达标或质量问题导致的扣款';
+  } else if (qualityRatio >= 0.7) {
+    qualityDesc = '主要为品质不达标或质量问题导致的扣款，另有少量其他费用';
+  } else if (qualityRatio >= 0.3) {
+    qualityDesc = '部分为品质不达标或质量问题导致的扣款，另有部分其他费用';
+  } else {
+    qualityDesc = '以其他费用为主，品质问题扣款占比较小';
+  }
+
+  var topN = reasons.length >= 4 ? 4 : reasons.length;
+  var topReasons = reasons.slice(0, topN);
   var reasonParts = [];
-  for (var i = 0; i < top4.length; i++) {
-    var r = top4[i];
+  for (var i = 0; i < topReasons.length; i++) {
+    var r = topReasons[i];
     reasonParts.push(reasonLabel(r.name) + '涉及金额' + round2(r.amount / 10000) + '万元，占比' + round2(r.ratio) + '％');
+  }
+
+  var dominantReason = '';
+  if (topReasons.length > 0 && topReasons[0].ratio >= 50) {
+    dominantReason = '，其中' + reasonLabel(topReasons[0].name) + '占比过半';
   }
 
   var deptNames = Object.keys(deptResult.deptData);
@@ -173,47 +203,79 @@ function handleDeductionParse() {
   }
 
   deptList.sort(function(a, b) { return b.perTon - a.perTon; });
-  var highNames = [];
-  for (var i = 0; i < deptList.length && highNames.length < 2; i++) {
+  var highPerTonDepts = [];
+  var lowPerTonDepts = [];
+  for (var i = 0; i < deptList.length; i++) {
     if (deptList[i].tons > 0.3) {
-      highNames.push(deptList[i].name);
+      if (highPerTonDepts.length < 2) {
+        highPerTonDepts.push(deptList[i]);
+      }
+    }
+  }
+  for (var i = deptList.length - 1; i >= 0; i--) {
+    if (deptList[i].tons > 0.3) {
+      if (lowPerTonDepts.length < 2) {
+        lowPerTonDepts.push(deptList[i]);
+      }
     }
   }
 
-  var highPerTonDepts = [];
+  deptList.sort(function(a, b) { return b.ratio - a.ratio; });
   var highRatioDepts = [];
-  for (var i = 0; i < highNames.length; i++) {
-    var dd = deptResult.deptData[highNames[i]];
-    highPerTonDepts.push({ name: highNames[i], value: round2(dd.perTon) });
-    highRatioDepts.push({ name: highNames[i], value: round2(dd.ratio) });
+  for (var i = 0; i < deptList.length; i++) {
+    if (deptList[i].settleTotal > 10) {
+      if (highRatioDepts.length < 2) {
+        highRatioDepts.push(deptList[i]);
+      }
+    }
   }
 
   var highNames = [];
   var detail1 = [];
   var detail2 = [];
-
   for (var i = 0; i < highPerTonDepts.length; i++) {
     if (highNames.indexOf(highPerTonDepts[i].name) < 0) {
       highNames.push(highPerTonDepts[i].name);
     }
-    detail1.push(highPerTonDepts[i].name + round2(highPerTonDepts[i].value) + '元/吨');
+    detail1.push(highPerTonDepts[i].name + round2(highPerTonDepts[i].perTon) + '元/吨');
   }
   for (var i = 0; i < highRatioDepts.length; i++) {
     if (highNames.indexOf(highRatioDepts[i].name) < 0) {
       highNames.push(highRatioDepts[i].name);
     }
-    detail2.push(highRatioDepts[i].name + '结算数量中' + round2(highRatioDepts[i].value) + '％涉及商扣');
+    detail2.push(highRatioDepts[i].name + '结算数量中' + round2(highRatioDepts[i].ratio) + '％涉及商扣');
+  }
+
+  var perTonMax = highPerTonDepts.length > 0 ? highPerTonDepts[0].perTon : 0;
+  var perTonMin = lowPerTonDepts.length > 0 ? lowPerTonDepts[lowPerTonDepts.length - 1].perTon : 0;
+  var perTonSpread = perTonMin > 0 ? perTonMax / perTonMin : 1;
+
+  var deptSection = '';
+  if (highNames.length === 0) {
+    deptSection = '各经营部商扣水平较为均衡。';
+  } else if (perTonSpread < 1.5) {
+    deptSection = '各经营部商扣水平差异不大，' + highNames.join('、') + '相对略高（' + detail1.join('，') + '），商扣频率也略高（' + detail2.join('，') + '）。';
+  } else {
+    deptSection = '分经营部看，' + highNames.join('、') + '单吨商扣较高（' + detail1.join('，') + '），商扣频率也较高（' + detail2.join('，') + '）。';
+  }
+
+  var changeComment = '';
+  if (hasPrev) {
+    if (changeBishu > 0 && changeAmount > 0) {
+      changeComment = '环比有所增加，';
+    } else if (changeBishu < 0 && changeAmount < 0) {
+      changeComment = '环比有所下降，';
+    } else if (changeBishu === 0 && changeAmount === 0) {
+      changeComment = '环比基本持平，';
+    }
   }
 
   var text = '截至' + dateStr + '，' + region + '本年累计销售商扣' + bishuPart + '，' +
-    '基本为饲料原料品种扣款，涉及扣款金额' + amountPart + '，' +
-    '平均单吨扣款' + perTonPart + '，均为品质不达标或质量问题导致的扣款。' +
-    '其中' + reasonParts.join('；') + '。';
+    changeComment + '涉及扣款金额' + amountPart + '，' +
+    '平均单吨扣款' + perTonPart + '，' + qualityDesc + '。' +
+    '其中' + reasonParts.join('；') + dominantReason + '。';
 
-  if (highNames.length > 0) {
-    text += '分经营部看，' + highNames.join('、') + '单吨商扣较高（' + detail1.join('，') + '），' +
-      '商扣频率也较高（' + detail2.join('，') + '）。';
-  }
+  text += deptSection;
 
   deductionResult = {
     deptData: deptResult.deptData,
