@@ -691,6 +691,30 @@ async function exportWord() {
     }); }));
   }
 
+  var deductionEl = document.getElementById('deductionTextOutput');
+  if (deductionResult && deductionEl && deductionEl.textContent.trim()) {
+    if (!filename) filename = `${region}运营周报-商务扣款`;
+
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '', size: 8 })],
+      border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: 'BDC3C7', space: 4 } },
+      spacing: { before: 320, after: 320 },
+    }));
+
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '七、商务扣款情况', size: SIZE_HEADING, font: { name: FONT_HEADING }, color: COLOR_HEAD, bold: true })],
+      spacing: { line: 360, lineRule: 'auto', before: 0, after: 160 },
+    }));
+
+    var deductionParas = Array.from(deductionEl.querySelectorAll('.text-para')).map(function(p) { return p.innerHTML; });
+    docChildren.push.apply(docChildren, deductionParas.map(function(html) { return new Paragraph({
+      children: buildParagraphRuns(html, window.docx),
+      alignment: AlignmentType.BOTH,
+      indent: { firstLine: 480 },
+      spacing: { line: 360, lineRule: 'auto', after: 80 },
+    }); }));
+  }
+
   if (docChildren.length === 0) {
     showToast('⚠️ 请先生成意向销售或销售签约数据');
     return;

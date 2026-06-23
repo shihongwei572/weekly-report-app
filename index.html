@@ -40,6 +40,7 @@
     <button class="tab-btn" data-tab="lastmile" onclick="switchTab('lastmile')">📍 最后一公里</button>
     <button class="tab-btn" data-tab="container" onclick="switchTab('container')">📦 集装箱玉米</button>
     <button class="tab-btn" data-tab="port" onclick="switchTab('port')">🚢 港口库存</button>
+    <button class="tab-btn" data-tab="deduction" onclick="switchTab('deduction')">💰 商务扣款</button>
   </div>
 
   <div class="layout">
@@ -416,6 +417,48 @@
         </div>
       </div>
 
+      <!-- ===== 商务扣款模块（默认隐藏）===== -->
+      <div id="tab-deduction-sidebar" style="display:none">
+        <div class="card">
+          <div class="card-title">⚙️ 商务扣款配置</div>
+          <div class="form-row">
+            <label>统计截止日期</label>
+            <input type="date" id="deductionCutoffDate" value="2026-05-15" />
+          </div>
+          <div class="form-row">
+            <label>大区名称</label>
+            <select id="deductionRegion" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
+              <option value="沿海大区" selected>沿海大区</option>
+              <option value="珠三角">珠三角</option>
+              <option value="粤西">粤西</option>
+              <option value="广西">广西</option>
+              <option value="福建">福建</option>
+              <option value="海南">海南</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📋 粘贴经营部商扣数据</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.6">
+            从 Excel 复制经营部表格 → 粘贴到下方：
+          </div>
+          <textarea id="deductionDeptPaste" placeholder="经营部	商扣笔数	商扣金额（万元）	商扣吨数（万吨）	单吨商扣（元/吨）	累计结算量（万吨）	商扣均摊至结算量（元/吨）	商扣数量占结算数量比例&#10;珠三角	105 	141.21 	9.35 	15.09 	110.36 	1.28 	8%&#10;..."
+            style="width:100%;height:160px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:12px;resize:vertical;white-space:pre;"></textarea>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📋 粘贴扣款原因数据</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;line-height:1.6">
+            从 Excel 复制扣款原因表格 → 粘贴到下方：
+          </div>
+          <textarea id="deductionReasonPaste" placeholder="扣款原因	扣款金额（元）	占比&#10;杂质	1332384.74 	48%&#10;..."
+            style="width:100%;height:160px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:12px;resize:vertical;white-space:pre;"></textarea>
+          <button class="btn btn-sm btn-primary" style="margin-top:8px;width:100%" onclick="handleDeductionParse()">🚀 解析并生成</button>
+          <div class="upload-status" id="deductionStatus"></div>
+        </div>
+      </div>
+
     </aside>
 
     <!-- ===== 右侧：结果 ===== -->
@@ -616,6 +659,40 @@
         </div>
       </div>
 
+      <!-- ===== 商务扣款结果 ===== -->
+      <div id="tab-deduction-content" style="display:none">
+        <div class="empty-state" id="deductionEmptyState">
+          <div class="empty-icon">📁</div>
+          <p>请在左侧粘贴经营部商扣数据和扣款原因数据</p>
+          <small>粘贴后点击「解析并生成」</small>
+        </div>
+        <div id="deductionResultArea" style="display:none">
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📝 商务扣款文字</h2>
+              <button class="btn btn-sm btn-outline" onclick="copyDeductionText()">复制</button>
+            </div>
+            <div class="text-output" id="deductionTextOutput"></div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📊 各经营部商扣情况</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="deductionDeptTable"></table>
+            </div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>📊 扣款原因分类</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="deductionReasonTable"></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -633,6 +710,7 @@
 <script src="modules/lastmile.js"></script>
 <script src="modules/container.js"></script>
 <script src="modules/port.js"></script>
+<script src="modules/deduction.js"></script>
 <script src="word-export.js"></script>
 <script src="app.js"></script>
 </body>

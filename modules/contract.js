@@ -65,7 +65,7 @@ function switchTab(tab) {
   const chartBtn = document.querySelector('button[onclick="downloadChart()"]');
   const layout = document.querySelector('.layout');
 
-  ['intent', 'contract', 'settle', 'lastmile', 'container', 'port'].forEach(t => {
+  ['intent', 'contract', 'settle', 'lastmile', 'container', 'port', 'deduction'].forEach(t => {
     const sb = document.getElementById(`tab-${t}-sidebar`);
     const ct = document.getElementById(`tab-${t}-content`);
     if (sb) sb.style.display = 'none';
@@ -147,6 +147,12 @@ function switchTab(tab) {
     var hasPortResult = portResultArea && portResultArea.style.display !== 'none';
     updateFlowSequence(portWorkbook ? (hasPortResult ? 3 : 1) : 0);
     updateTabWorkbookStatus('port', !!portWorkbook, '3-沿海饲料原料数据核对-*.xlsx');
+  } else if (tab === 'deduction') {
+    if (chartBtn) chartBtn.style.display = 'none';
+    if (layout) layout.classList.add('with-flow');
+    var deductionResultArea = document.getElementById('deductionResultArea');
+    var hasDeductionResult = deductionResultArea && deductionResultArea.style.display !== 'none';
+    updateFlowSequence(deductionResult ? (hasDeductionResult ? 3 : 0) : 0);
   }
 }
 
