@@ -105,7 +105,7 @@ function renderChart(by_dept, prevTotals, deptTotals) {
         }
 
         c.save();
-        c.fillStyle = '#1e40af';
+        c.fillStyle = '#1a202c';
         c.font = 'bold 12px "Microsoft YaHei", sans-serif';
         c.textAlign = 'center';
         c.textBaseline = 'bottom';

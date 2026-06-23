@@ -1,3 +1,18 @@
+async function captureTableImage(tableEl) {
+  if (typeof html2canvas === 'undefined') return null;
+  try {
+    var canvas = await html2canvas(tableEl, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      logging: false
+    });
+    return canvas.toDataURL('image/png');
+  } catch(e) {
+    console.warn('表格截图失败:', e);
+    return null;
+  }
+}
+
 function buildParagraphRuns(htmlStr, docx) {
   const { TextRun } = docx;
   const tempDiv = document.createElement('div');
@@ -478,43 +493,45 @@ async function exportWord() {
     if (!filename) filename = `${region}运营周报-销售签约`;
     else filename += '-完整版';
 
-    const result = calcContractData();
-    if (result) {
-      const { detailData } = result;
-      const subDepts = ['珠三角', '粤西', '广西', '海南', '福建'];
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '', size: 8 })],
+      border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: 'BDC3C7', space: 4 } },
+      spacing: { before: 320, after: 320 },
+    }));
 
-      let totalSigned = 0;
-      subDepts.forEach(dept => {
-        const deptMap = mapDetailToVarietyColumns(detailData[dept]);
-        Object.values(deptMap).forEach(v => { totalSigned += v; });
-      });
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '二、销售签约及任务完成情况', size: SIZE_HEADING, font: { name: FONT_HEADING }, color: COLOR_HEAD, bold: true })],
+      spacing: { line: 360, lineRule: 'auto', before: 0, after: 160 },
+    }));
 
-      docChildren.push(new Paragraph({
-        children: [new TextRun({ text: '', size: 8 })],
-        border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: 'BDC3C7', space: 4 } },
-        spacing: { before: 320, after: 320 },
-      }));
+    const contractParas = Array.from(contractEl.querySelectorAll('.text-para')).map(p => p.innerHTML);
+    docChildren.push(...contractParas.map(html => new Paragraph({
+      children: buildParagraphRuns(html, window.docx),
+      alignment: AlignmentType.BOTH,
+      indent: { firstLine: 480 },
+      spacing: { line: 360, lineRule: 'auto', after: 80 },
+    })));
 
-      docChildren.push(new Paragraph({
-        children: [new TextRun({ text: '二、销售签约及任务完成情况', size: SIZE_HEADING, font: { name: FONT_HEADING }, color: COLOR_HEAD, bold: true })],
-        spacing: { line: 360, lineRule: 'auto', before: 0, after: 160 },
-      }));
+    docChildren.push(new Paragraph({ children: [], spacing: { before: 240 } }));
+    docChildren.push(new Paragraph({
+      children: [new TextRun({ text: '表：各经营部本年度签约量汇总（万吨）', size: SIZE_CAPTION, font: { name: FONT_MAIN }, color: COLOR_CAPTION, italics: true })],
+      alignment: AlignmentType.LEFT,
+      spacing: { after: 100 },
+    }));
 
-      const contractParas = Array.from(contractEl.querySelectorAll('.text-para')).map(p => p.innerHTML);
-      docChildren.push(...contractParas.map(html => new Paragraph({
-        children: buildParagraphRuns(html, window.docx),
-        alignment: AlignmentType.BOTH,
-        indent: { firstLine: 480 },
-        spacing: { line: 360, lineRule: 'auto', after: 80 },
-      })));
-
-      docChildren.push(new Paragraph({ children: [], spacing: { before: 240 } }));
-      docChildren.push(new Paragraph({
-        children: [new TextRun({ text: '表：各经营部本年度签约量汇总（万吨）', size: SIZE_CAPTION, font: { name: FONT_MAIN }, color: COLOR_CAPTION, italics: true })],
-        alignment: AlignmentType.LEFT,
-        spacing: { after: 100 },
-      }));
-      docChildren.push(buildContractWordTable(window.docx, detailData, totalSigned, contractUnitFactor));
+    var contractTableEl = document.getElementById('contractTable');
+    if (contractTableEl) {
+      var tableImg = await captureTableImage(contractTableEl);
+      if (tableImg) {
+        var imgData = base64ToUint8Array(tableImg);
+        var imgWidthPx = 560;
+        var imgHeightPx = Math.round(imgWidthPx * 0.4);
+        docChildren.push(new Paragraph({
+          children: [new ImageRun({ data: imgData, transformation: { width: imgWidthPx, height: imgHeightPx } })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 160 },
+        }));
+      }
     }
   }
 
