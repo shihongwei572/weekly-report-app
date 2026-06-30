@@ -74,7 +74,7 @@ function calcLastmileData() {
 
   const startStr  = document.getElementById('lastmileStartDate')?.value || '';
   const cutoffStr = document.getElementById('lastmileCutoffDate')?.value || '';
-  const DEPTS    = ['珠三角', '粤西', '广西', '海南', '福建'];
+  const DEPTS    = ['珠三角', '粤西', '广西', '福建', '海南'];
   const VARIETIES = ['国产玉米', '小麦', '稻谷', '大豆'];
 
   const deptData = {};
@@ -110,20 +110,28 @@ function calcLastmileData() {
     const dept = String(row[idx['经营部']] ?? '').trim();
     if (!DEPTS.includes(dept)) continue;
 
+    // 品种映射（用于品种维度统计）
     const rawVariety = String(row[idx['品种']] ?? '').trim();
     const variety = mapLastmileVariety(rawVariety);
-    if (!variety) continue;
 
     const lastmileMode = (document.getElementById('lastmileTihuoMode')?.value || '配送').trim();
     const tihuo = String(row[idx['提货方式']] ?? '').trim();
     const isLastmile = (tihuo === lastmileMode);
 
+    // 经营维度：所有品种都算
     deptData[dept].total    += qty;
-    varietyData[variety].total += qty;
     if (isLastmile) {
-      deptData[dept].lastmile    += qty;
-      varietyData[variety].lastmile += qty;
+      deptData[dept].lastmile += qty;
     }
+
+    // 品种维度：只统计映射成功的品种
+    if (variety) {
+      varietyData[variety].total += qty;
+      if (isLastmile) {
+        varietyData[variety].lastmile += qty;
+      }
+    }
+
     rowCount++;
   }
 

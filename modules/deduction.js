@@ -256,7 +256,7 @@ function handleDeductionParse() {
   } else if (perTonSpread < 1.5) {
     deptSection = '各经营部商扣水平差异不大，' + highNames.join('、') + '相对略高（' + detail1.join('，') + '），商扣频率也略高（' + detail2.join('，') + '）。';
   } else {
-    deptSection = '分经营部看，' + highNames.join('、') + '单吨商扣较高（' + detail1.join('，') + '），商扣频率也较高（' + detail2.join('，') + '）。';
+    deptSection = '分经营部看，' + highNames.join('、') + '均摊(元/吨)较高（' + detail1.join('，') + '），商扣频率也较高（' + detail2.join('，') + '）。';
   }
 
   var changeComment = '';
@@ -272,7 +272,7 @@ function handleDeductionParse() {
 
   var text = '截至' + dateStr + '，' + region + '本年累计销售商扣' + bishuPart + '，' +
     changeComment + '涉及扣款金额' + amountPart + '，' +
-    '平均单吨扣款' + perTonPart + '，' + qualityDesc + '。' +
+    '均摊至年度累计结算量的单吨商扣为' + perTonPart + '，' + qualityDesc + '。' +
     '其中' + reasonParts.join('；') + dominantReason + '。';
 
   text += deptSection;

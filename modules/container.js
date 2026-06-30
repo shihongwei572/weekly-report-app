@@ -76,8 +76,21 @@ function calcContainerData() {
 
   const startStr  = document.getElementById('containerStartDate')?.value || '';
   const cutoffStr = document.getElementById('containerCutoffDate')?.value || '';
-  const packMode  = (document.getElementById('containerPackMode')?.value || '集装箱').trim();
-  const DEPTS = ['珠三角', '粤西', '广西', '海南', '福建'];
+
+  // 获取选中的包装方式
+  const packGroup = document.getElementById('containerPackGroup');
+  const checkedPacks = [];
+  if (packGroup) {
+    packGroup.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+      checkedPacks.push(cb.value);
+    });
+  }
+  // 默认全选
+  if (checkedPacks.length === 0) {
+    checkedPacks.push('集装箱', '铁路');
+  }
+
+  const DEPTS = ['珠三角', '粤西', '广西', '福建', '海南'];
 
   const deptData = {};
   DEPTS.forEach(d => { deptData[d] = { container: 0, railway: 0, total: 0 }; });
@@ -116,7 +129,16 @@ function calcContainerData() {
     }
 
     const pack = String(row[idx['包装方式']] ?? '').trim();
-    if (packMode !== '全部' && !pack.includes(packMode)) continue;
+
+    // 检查包装方式是否匹配任一选中项
+    let packMatch = false;
+    for (const p of checkedPacks) {
+      if (pack.includes(p)) {
+        packMatch = true;
+        break;
+      }
+    }
+    if (!packMatch) continue;
 
     const dept = String(row[idx['经营部']] ?? '').trim();
     if (!DEPTS.includes(dept)) continue;
@@ -156,7 +178,7 @@ function refreshContainerOutput() {
     const { deptData, monthlyData, totalAll, railwayAll, rowCount } = result;
     const region  = document.getElementById('containerRegion')?.value || '沿海大区';
     const cutoff  = document.getElementById('containerCutoffDate')?.value || '';
-    const DEPTS   = ['珠三角', '粤西', '广西', '海南', '福建'];
+    const DEPTS   = ['珠三角', '粤西', '广西', '福建', '海南'];
 
     const cutoffLabel = cutoff ? cutoff.replace(/^\d{4}-/, '').replace('-', '/') + '日' : '';
 
@@ -219,16 +241,22 @@ function renderContainerTable(deptData, depts, region) {
   const thead = `<thead><tr>
     <th class="th-dept" style="background:#1254cc">经营部</th>
     <th style="background:#1254cc">预算指标</th>
-    <th style="background:#1a6ef5">销售签约量</th>
+    <th style="background:#1a6ef5">集装箱</th>
+    <th style="background:#1a6ef5">铁路</th>
+    <th style="background:#1a6ef5">合计</th>
     <th style="background:#1a6ef5">完成率</th>
   </tr></thead>`;
 
-  const totalRow = { total: 0, plan: 0 };
+  const totalRow = { total: 0, container: 0, railway: 0, plan: 0 };
   depts.forEach(d => {
     totalRow.total += deptData[d].total;
+    totalRow.container += deptData[d].container;
+    totalRow.railway += deptData[d].railway;
     totalRow.plan  += CONTAINER_PLAN[d] || 0;
   });
   totalRow.total = round2(totalRow.total);
+  totalRow.container = round2(totalRow.container);
+  totalRow.railway = round2(totalRow.railway);
 
   let tbody = '<tbody>';
   displayDepts.forEach((dept, idx) => {
@@ -243,7 +271,9 @@ function renderContainerTable(deptData, depts, region) {
     tbody += `<tr class="${trCls}">
       <td class="td-dept">${dept}</td>
       <td class="td-plan" style="text-align:center">${plan > 0 ? plan : '-'}</td>
-      <td class="td-num">${data.total > 0 ? round2(data.total) : '-'}</td>
+      <td class="td-num">${data.container > 0 ? round2(data.container) : '-'}</td>
+      <td class="td-num">${data.railway > 0 ? round2(data.railway) : '-'}</td>
+      <td class="td-num"><b>${data.total > 0 ? round2(data.total) : '-'}</b></td>
       <td class="td-rate ${rateCls}">${rateStr}</td>
     </tr>`;
   });

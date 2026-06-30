@@ -52,6 +52,19 @@ function findRowByDate(rows, dateColIdx, targetDate) {
   return null;
 }
 
+function findRowByDateAnyCol(rows, dateColIdx1, dateColIdx2, targetDate) {
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var cellDate = parseExcelDate(row[dateColIdx1]);
+    if (cellDate && cellDate === targetDate) return row;
+    if (dateColIdx2 !== undefined) {
+      cellDate = parseExcelDate(row[dateColIdx2]);
+      if (cellDate && cellDate === targetDate) return row;
+    }
+  }
+  return null;
+}
+
 function parseExcelDate(val) {
   if (!val) return null;
   if (typeof val === 'number') {
@@ -80,6 +93,7 @@ function calcPortData() {
 
   if (!socialStockRows.length) return null;
 
+  // 从社会港存获取日期列表
   var dates = [];
   for (var i = 0; i < socialStockRows.length; i++) {
     var d = parseExcelDate(socialStockRows[i][0]);
@@ -91,18 +105,26 @@ function calcPortData() {
   var latestDate = dates[dates.length - 1];
   var prevDate = dates[dates.length - 2];
 
+  // 查找对应行
   var socialStock = findRowByDate(socialStockRows, 0, latestDate);
   var socialStockPrev = findRowByDate(socialStockRows, 0, prevDate);
+
+  // 社会走货量：日期在第1列
   var socialFlow = findRowByDate(socialFlowRows, 1, latestDate);
   var socialFlowPrev = findRowByDate(socialFlowRows, 1, prevDate);
+
+  // 我司港存：日期在第0列
   var ourStock = findRowByDate(ourStockRows, 0, latestDate);
   var ourStockPrev = findRowByDate(ourStockRows, 0, prevDate);
+
+  // 我司走货量：日期在第0列
   var ourFlow = findRowByDate(ourFlowRows, 0, latestDate);
   var ourFlowPrev = findRowByDate(ourFlowRows, 0, prevDate);
 
   if (!socialStock || !socialStockPrev || !socialFlow || !socialFlowPrev ||
       !ourStock || !ourStockPrev || !ourFlow || !ourFlowPrev) return null;
 
+  // 读取数据（根据新的列索引）
   var socialStockVal = parsePortNum(socialStock[7]);
   var socialStockPrevVal = parsePortNum(socialStockPrev[7]);
   var socialCornStock = parsePortNum(socialStock[14]);

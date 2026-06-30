@@ -11,6 +11,14 @@ const COL_MAP = [
   { name: '大豆', key: '大豆' }
 ];
 
+const SETTLE_GROUPS = [
+  { key: '国产玉米', label: '国产玉米', varieties: ['国产玉米'] },
+  { key: '进口高粱组', label: '进口替代', varieties: ['进口高粱', '进口大麦', '进口木薯片', '进口葵花籽粕', 'DDGS'] },
+  { key: '小麦', label: '小麦', varieties: ['小麦'] },
+  { key: '稻谷', label: '稻谷', varieties: ['食用稻谷'] },
+  { key: '进口大豆', label: '大豆', varieties: ['大豆'] }
+];
+
 var settleWorkbook = null;
 let settleResult = null;
 
@@ -138,8 +146,56 @@ function renderResult() {
   tbody += '</tbody>';
 
   table.innerHTML = thead + tbody;
+
+  renderPlanCompletionTable(deptData, totals);
+
   updateFlowSequence(3);
   showToast('✅ 生成成功！');
+}
+
+function renderPlanCompletionTable(deptData, totals) {
+  const planTable = document.getElementById('settlePlanTable');
+  if (!planTable) return;
+
+  const displayDepts = [...SETTLE_DEPTS, '沿海大区'];
+
+  const thead = '<thead><tr>' +
+    '<th class="th-dept">经营部</th>' +
+    '<th class="th-group">计划(万吨)</th>' +
+    '<th class="th-group">结算(万吨)</th>' +
+    '<th class="th-group">完成率</th>' +
+    '</tr></thead>';
+
+  let tbody = '<tbody>';
+  displayDepts.forEach((dept, rowIdx) => {
+    const isTotal = (dept === '沿海大区');
+    const trCls = isTotal ? 'tr-total' : (rowIdx % 2 === 1 ? 'tr-even' : '');
+
+    const plan = CONFIG.contractPlan[dept];
+    const data = isTotal ? totals : deptData[dept];
+
+    let settleSum = 0;
+    for (const group of SETTLE_GROUPS) {
+      for (const v of group.varieties) {
+        settleSum += data[v] || 0;
+      }
+    }
+    settleSum = round2(settleSum);
+
+    const planTotal = plan['合计'] || 0;
+    const rate = planTotal > 0 ? round2(settleSum / planTotal * 100) : 0;
+    const rateCls = rate >= 80 ? 'rate-success' : rate >= 60 ? 'rate-warning' : 'rate-danger';
+
+    tbody += `<tr class="${trCls}">` +
+      `<td class="td-dept">${dept}</td>` +
+      `<td class="td-num">${planTotal > 0 ? planTotal : '-'}</td>` +
+      `<td class="td-num">${settleSum > 0 ? settleSum : '-'}</td>` +
+      `<td class="td-rate ${rateCls}">${planTotal > 0 ? rate + '%' : '-'}</td>` +
+      '</tr>';
+  });
+  tbody += '</tbody>';
+
+  planTable.innerHTML = thead + tbody;
 }
 
 function calcSettleData() {

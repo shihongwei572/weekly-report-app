@@ -367,10 +367,16 @@
           </div>
           <div class="form-row" style="margin-top:10px">
             <label>包装方式</label>
-            <select id="containerPackMode" style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;">
-              <option value="集装箱" selected>集装箱</option>
-              <option value="全部">全部</option>
-            </select>
+            <div class="checkbox-group" id="containerPackGroup">
+              <label class="checkbox-item">
+                <input type="checkbox" value="集装箱" checked onchange="refreshContainerOutput()">
+                <span>集装箱</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" value="铁路" checked onchange="refreshContainerOutput()">
+                <span>铁路</span>
+              </label>
+            </div>
           </div>
           <button class="btn btn-sm btn-outline" style="margin-top:8px;width:100%" onclick="refreshContainerOutput()">🔄 刷新输出</button>
         </div>
@@ -557,6 +563,14 @@
             </div>
             <div class="table-wrap">
               <table class="data-table" id="settleTable"></table>
+            </div>
+          </div>
+          <div class="result-block">
+            <div class="block-header">
+              <h2>🎯 各经营部年度任务完成情况</h2>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="settlePlanTable"></table>
             </div>
           </div>
         </div>
