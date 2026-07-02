@@ -104,7 +104,33 @@ function renderResult() {
   if (!settleResult) return;
   const { deptData, totals } = settleResult;
 
+  // 计算各组结算汇总
+  const groupSettle = {};
+  SETTLE_GROUPS.forEach(g => {
+    groupSettle[g.key] = round2(g.varieties.reduce((s, v) => s + (totals[v] || 0), 0));
+  });
+
+  // 各经营部结算汇总
+  const deptSettle = {};
+  SETTLE_DEPTS.forEach(d => {
+    const data = deptData[d];
+    let sum = 0;
+    for (const g of SETTLE_GROUPS) {
+      for (const v of g.varieties) {
+        sum += data[v] || 0;
+      }
+    }
+    deptSettle[d] = round2(sum);
+  });
+
   const totalAll = round2(Object.values(totals).reduce((a, b) => a + b, 0));
+
+  // 总完成率
+  const regionPlan = CONFIG.contractPlan['沿海大区'];
+  const regionPlanTotal = regionPlan ? regionPlan['合计'] : 0;
+  const regionRate = regionPlanTotal > 0 ? round2(totalAll / regionPlanTotal * 100) : 0;
+
+  // 第一段：结算总量
   let text = `本年累计销售结算${totalAll}万吨。`;
   text += `其中内贸玉米${round2(totals['国产玉米'])}万吨，`;
   text += `进口高粱${round2(totals['进口高粱'])}万吨，`;
@@ -112,6 +138,30 @@ function renderResult() {
   text += `进口木薯片${round2(totals['进口木薯片'])}万吨，`;
   text += `DDGS${round2(totals['DDGS'])}万吨，`;
   text += `小麦${round2(totals['小麦'])}万吨，稻谷${round2(totals['食用稻谷'])}万吨，大豆${round2(totals['大豆'])}万吨。`;
+
+  // 第二段：各品种组完成比例
+  let varietyParts = [];
+  SETTLE_GROUPS.forEach(g => {
+    const planVal = regionPlan ? (regionPlan[g.key] || 0) : 0;
+    const settleVal = groupSettle[g.key];
+    const rate = planVal > 0 ? round2(settleVal / planVal * 100) : 0;
+    varietyParts.push(`${g.key === '进口大豆' ? '大豆' : (g.key === '进口高粱组' ? '进口替代' : g.key)}计划${planVal}万吨，结算${settleVal}万吨，完成${rate}%`);
+  });
+  text += `按品种看，${varietyParts.join('；')}。`;
+
+  // 第三段：各经营部完成比例
+  let deptParts = [];
+  SETTLE_DEPTS.forEach(d => {
+    const plan = CONFIG.contractPlan[d];
+    const planTotal = plan ? plan['合计'] : 0;
+    const settleVal = deptSettle[d];
+    const rate = planTotal > 0 ? round2(settleVal / planTotal * 100) : 0;
+    deptParts.push(`${d}计划${planTotal}万吨，结算${settleVal}万吨，完成${rate}%`);
+  });
+  text += `分经营部看，${deptParts.join('；')}。`;
+
+  // 第四段：总结
+  text += `沿海大区年度任务计划${regionPlanTotal}万吨，整体完成率${regionRate}%。`;
 
   document.getElementById('settleEmptyState').style.display = 'none';
   document.getElementById('settleResultArea').style.display = 'block';
